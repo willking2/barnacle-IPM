@@ -1,0 +1,13 @@
+site,subsite,density_trt,abundance_initial,abundance_final,lambda,notes
+CC,CC2,H,60,94,1.57,initial: 20170527. final: 20180501 
+FH,FH1,H,22,82,3.73,initial: 20170526. final: 20180501 
+FH,FH1,L,19,60,3.16,initial: 20170526. final: 20180501 
+FH,FH1,M,36,52,1.44,initial: 20170526. final: 20180501 
+FH,FH2,H,17,26,1.53,initial: 20170526. final: 20180501 
+FH,FH2,M,61,35,0.57,initial: 20170526. final: 20180501 
+RT,RT2,H,64,57,0.89,initial: 20170609. final: 20180502 
+RT,RT2,L,20,28,1.4,initial: 20170609. final: 20180502 
+RT,RT2,M,42,48,1.14,initial: 20170609. final: 20180502 
+RT,RT3,H,803,693,0.86,"initial: 20170609. final: 20180710; final photo is later date than in survival/growth dataset, because need to identify b. glandula vs. c. dalli"
+RT,RT3,L,100,528,5.28,"initial: 20170609. final: 20180710; final photo is later date than in survival/growth dataset, because need to identify b. glandula vs. c. dalli"
+RT,RT3,M,239,632,2.64,"initial: 20170609. final: 20180710; final photo is later date than in survival/growth dataset, because need to identify b. glandula vs. c. dalli"
