@@ -2046,7 +2046,7 @@ C_0t1 <- function(t1, m.par_st){
 }
 
 
-### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)
+### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
 
 P_z1z <- function(z1, z, t1, t, m.par_st){
   return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t)
