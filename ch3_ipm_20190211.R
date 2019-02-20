@@ -1810,7 +1810,8 @@ Uz1 = 6
 Ut1 = 0.8
 
 ### number of 'bins' for iteration matrix
-nBigMatrix <- 500
+nBigMatrix_z <- 500
+nBigMatrix_t <- 50
 
 ### Probability of recruitment, Pr
 # a) IPM book pg. 23. Can estimate by dividing number of recruits by total larval production. A problem with this is that I didn't survey every adult barnacle. But I'm assuming closed population and other assumptions anyway, so just go ahead and do it.
@@ -2061,4 +2062,94 @@ F_z1z <- function(z1, z, t1, t, m.par_st){
 }
 
 
+### define K kernel
+k_st <- function(z1, z, t1, t, m.par_st){
+  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
+}
+
 # ---- IPM size touch: numerical implementation ----
+
+# following IPM book pg. 162-164 and SizeQualityExample.R
+
+### compute meshpoints
+mz <- 80 # number of size mesh points 
+mt <- 50  # number of touch mesh points
+Lz <- 0.1 # size lower bound
+Uz<- 10  # size upper bound
+Lt <- 0 # touch lower bound
+Ut <- 1 # touch upper bound
+hz <- (Uz-Lz)/mz # size mesh point breaks
+yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+ht <- (Ut-Lt)/mt # touch mesh point breaks
+yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+
+### compute 4D kernel and 2D iteration matrix
+
+# Function eta to put kernel values in their proper place in A 
+eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+
+# matrix whose (i,j) entry is eta(ij) 
+Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz) 
+
+A = matrix(0,mz*mt,mz*mt)
+Kvals = array(0,c(mz,mt,mz,mt))  
+for(i in 1:mz){
+  for(j in 1:mt){
+    for(k in 1:mt){
+      kvals = k_st(yz, yt[k], yz[i], yt[j], m.par_st)
+      A[Eta[, k], Eta[i, j]] = kvals
+      Kvals[ , k, i, j] = kvals
+    }
+  }
+  cat(i, "\n") 
+}
+A <- hz*ht*A  
+
+
+
+
+
+
+
+
+### use the mid-point rule
+
+# mz = size number of mesh points = nBigMatrix_z
+# mt = touch number of meshpoints = nBigMatrix_t
+# Lz = 0.1 = size lower bound; minimum observed recruit size in field is 0.2 mm operc length
+# Uz = 10 = size upper bound; max observed size in field is 7.637 mm operc length, but I'll do ceiling
+# Lt = 0 = touch lower bound
+# Ut = 1 = touch upper bound; max observed touch in field is 0.8, but I'll do ceiling
+
+
+
+
+mk_K_st <- function(mz, mt, m.par, Lz, Uz, Lt, Ut) {
+  
+  ## compute mesh points
+  # size
+  hz <- (Uz - Lz)/mz
+  meshpts_z <- Lz + ((1:mz) - 1/2) * hz # equivalent to Lz + (1:mz)*hz - hz/2
+  # touch
+  ht <- (Ut - Lt)/mt
+  meshpts_t <- Lt + ((1:mt) - 1/2) * ht # equivalent to Lt + (1:mt)*ht - ht/2
+  
+  
+  
+  
+  
+  ## compute iteration matrix 
+  P <- h * (outer(meshpts, pmin(meshpts, U1), P_z1z, m.par = m.par)) # w/ceiling. IPM book pg. 48
+  F <- h * (outer(meshpts, pmin(meshpts, U1), F_z1z, m.par = m.par)) # w/ceiling. IPM book pg. 48
+
+  K <- P + F
+  
+  #matrix.image(K) # look at kernel
+  
+  return( list(K = K, meshpts = meshpts, P = P, F = F) )
+  
+}
+#dev.off()
+
+
+
