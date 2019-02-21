@@ -2067,12 +2067,31 @@ k_st <- function(z1, z, t1, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
+# ---- IPM size touch: define domEig ----
+
+# defining function, domEig, to compute just the dominant eigenvalue and eigenvector of the IPM matrix by iteration
+# for a size-quality model, matrix is huge; using eigen() will crash R
+# based on IPM book pg. 161
+
+domEig <- function(A, tol = 1e-8){
+  qmax <- 10*tol; lam <- 1;
+  x <- rep(1, nrow(A))/nrow(A);
+  while(qmax > tol){
+    x1 <- A%*%x;
+    qmax <- sum(abs(x1-lam*x));
+    lam <- sum(x1);
+    x <- x1/lam;
+  }
+  return(list(lambda = lam, w = x/sum(x)))
+}
+
+
 # ---- IPM size touch: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
 ### compute meshpoints
-mz <- 80 # number of size mesh points 
+mz <- 100 # number of size mesh points 
 mt <- 50  # number of touch mesh points
 Lz <- 0.1 # size lower bound
 Uz<- 10  # size upper bound
@@ -2105,51 +2124,12 @@ for(i in 1:mz){
 }
 A <- hz*ht*A  
 
-
-
-
-
-
-
-
-### use the mid-point rule
-
-# mz = size number of mesh points = nBigMatrix_z
-# mt = touch number of meshpoints = nBigMatrix_t
-# Lz = 0.1 = size lower bound; minimum observed recruit size in field is 0.2 mm operc length
-# Uz = 10 = size upper bound; max observed size in field is 7.637 mm operc length, but I'll do ceiling
-# Lt = 0 = touch lower bound
-# Ut = 1 = touch upper bound; max observed touch in field is 0.8, but I'll do ceiling
-
-
-
-
-mk_K_st <- function(mz, mt, m.par, Lz, Uz, Lt, Ut) {
-  
-  ## compute mesh points
-  # size
-  hz <- (Uz - Lz)/mz
-  meshpts_z <- Lz + ((1:mz) - 1/2) * hz # equivalent to Lz + (1:mz)*hz - hz/2
-  # touch
-  ht <- (Ut - Lt)/mt
-  meshpts_t <- Lt + ((1:mt) - 1/2) * ht # equivalent to Lt + (1:mt)*ht - ht/2
-  
-  
-  
-  
-  
-  ## compute iteration matrix 
-  P <- h * (outer(meshpts, pmin(meshpts, U1), P_z1z, m.par = m.par)) # w/ceiling. IPM book pg. 48
-  F <- h * (outer(meshpts, pmin(meshpts, U1), F_z1z, m.par = m.par)) # w/ceiling. IPM book pg. 48
-
-  K <- P + F
-  
-  #matrix.image(K) # look at kernel
-  
-  return( list(K = K, meshpts = meshpts, P = P, F = F) )
-  
-}
-#dev.off()
-
-
+### calculate Lambda, w, and v
+out <- domEig(A) # returns lambda and a vector proportional to w
+out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
+lam.stable <- out$lambda
+w <- Re(matrix(out$w, mz, mt))
+w <- w/(hz*ht*sum(w))
+v <- Re(matrix(out2$w, mz, mt))
+v <- v/sum(v)
 
