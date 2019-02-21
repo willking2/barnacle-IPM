@@ -2131,5 +2131,5 @@ lam.stable <- out$lambda
 w <- Re(matrix(out$w, mz, mt))
 w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
-v <- v/sum(v)
+v <- v/sum(v) 
 
