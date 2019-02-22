@@ -2128,8 +2128,84 @@ A <- hz*ht*A
 out <- domEig(A) # returns lambda and a vector proportional to w
 out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
 lam.stable <- out$lambda
+lam.stable.t <- out2$lambda
 w <- Re(matrix(out$w, mz, mt))
 w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val <- matrix(v, mz, mt)
+stable.state <- matrix(w, mz, mt) 
+v.dot.w <- sum(hz*ht*stable.state*repro.val)
+sens <- outer(repro.val,stable.state)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+# stable size distribution
+plot(yz
+     ,apply(stable.state
+            ,1
+            ,sum)
+     , xlab = "Size x"
+     , ylab = "Frequency"
+     , type = "l"
+)
+
+# stable size and crowding distribution
+image(yt
+      , yz
+      , t(stable.state)
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Crowding"
+      , ylab = "Size"
+)
+contour(yt
+        , yz
+        , t(stable.state)
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+# reproductive value
+image(yt
+      , yz
+      , t(repro.val)
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Crowding"
+      , ylab = "Size"
+)
+contour(yt
+        , yz
+        , t(repro.val)
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+# total elasticity
+image(yt
+      , yz
+      , t(total.elas)
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Crowding"
+      , ylab = "Size"
+)
+contour(yt
+        , yz
+        , t(total.elas)
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
