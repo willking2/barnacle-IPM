@@ -1873,7 +1873,7 @@ reprodyn.1b
 # 0.147 * (10 * z)^2.74
 
 ## probability recruitment Pr
-# unknown constant, set in "IPM st: general parameters"
+# unknown constant, set in "IPM_st: general parameters"
 
 ## recruit size distribution
 # intercpet only; recruit size not dependent on parent size
@@ -1999,13 +1999,15 @@ G_z1zt_st <- function(z1, z, t, m.par_st){
 ### touch dynamics: T(t', t)
 # you can model touch to be static or to be dynamic but follow original beta distribution...
 
-T_t1t_st <- function(t1, t){
-  
-  p.den.touch <- 1 # if touch is static, P(t1 = t) = 1
-  
-  ## output
-  return(p.den.touch)
-}
+#### problem area??? #
+# 
+# T_t1t_st <- function(t1, t){
+# 
+#   p.den.touch <- 1 # if touch is static, P(t1 = t) = 1
+# 
+#   ## output
+#   return(p.den.touch)
+# }
 
 ### prob reproduce: p_bz
 
