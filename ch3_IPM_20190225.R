@@ -1997,14 +1997,19 @@ G_z1zt_st <- function(z1, z, t, m.par_st){
 }
 
 ### touch dynamics: T(t', t)
-# you can model touch to be static or to be dynamic but follow original beta distribution...
 
-T_t1t_st <- function(t1, t){
+T_t1t_st <- function(t1, t, m.par_st){
 
-  p.den.touch <- ifelse(t1 == t
-                        , 1
-                        , 0
+  p.den.touch <- dbeta(t1
+                       , shape1 = 1
+                       , shape2 = 1
   )
+  
+  
+  # p.den.touch <- dnorm(t1
+  #                      , m = t
+  #                      , sd = 1
+  # )
 
   ## output
   return(p.den.touch)
@@ -2043,9 +2048,20 @@ C_0z1 <- function(z1, m.par_st){
 ### recruit touch dist: C_0(t')
 
 C_0t1 <- function(t1, m.par_st){
-  shp1 <- m.par_st['rcst.s1']
-  shp2 <- m.par_st['rcst.s2']
-  p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
+  
+  p.den.rcst <- dbeta(t1
+                      , shape1 = 1
+                      , shape2 = 1
+  )
+  
+  
+  
+  
+  # shp1 <- m.par_st['rcst.s1']
+  # shp2 <- m.par_st['rcst.s2']
+  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
+  
+  
   return(p.den.rcst)
 }
 
@@ -2053,7 +2069,7 @@ C_0t1 <- function(t1, m.par_st){
 ### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
 
 P_z1z <- function(z1, z, t1, t, m.par_st){
-  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t)
+  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
   )
 }
 
