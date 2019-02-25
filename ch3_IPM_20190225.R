@@ -1999,15 +1999,16 @@ G_z1zt_st <- function(z1, z, t, m.par_st){
 ### touch dynamics: T(t', t)
 # you can model touch to be static or to be dynamic but follow original beta distribution...
 
-#### problem area??? #
-# 
-# T_t1t_st <- function(t1, t){
-# 
-#   p.den.touch <- 1 # if touch is static, P(t1 = t) = 1
-# 
-#   ## output
-#   return(p.den.touch)
-# }
+T_t1t_st <- function(t1, t){
+
+  p.den.touch <- ifelse(t1 == t
+                        , 1
+                        , 0
+  )
+
+  ## output
+  return(p.den.touch)
+}
 
 ### prob reproduce: p_bz
 
