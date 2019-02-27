@@ -2085,7 +2085,7 @@ F_z1z <- function(z1, z, t1, t, m.par_st){
 
 
 ### define K kernel
-k_st <- function(z1, z, t1, t, m.par_st){
+k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
@@ -2093,19 +2093,32 @@ k_st <- function(z1, z, t1, t, m.par_st){
 
 # defining function, domEig, to compute just the dominant eigenvalue and eigenvector of the IPM matrix by iteration
 # for a size-quality model, matrix is huge; using eigen() will crash R
-# based on IPM book pg. 161
+# based on IPM book pg. 161, code from IPM book code, chapter 6, domEig.R
 
-domEig <- function(A, tol = 1e-8){
-  qmax <- 10*tol; lam <- 1;
-  x <- rep(1, nrow(A))/nrow(A);
-  while(qmax > tol){
-    x1 <- A%*%x;
-    qmax <- sum(abs(x1-lam*x));
-    lam <- sum(x1);
-    x <- x1/lam;
-  }
-  return(list(lambda = lam, w = x/sum(x)))
-}
+domEig=function(A,tol=1e-8) {
+  qmax=10*tol; lam=1; x=rep(1,nrow(A));   
+  while(qmax>tol) {
+    x1=A%*%x;
+    qmax=sum(abs(x1-lam*x));  
+    lam=sum(x1); 
+    x=x1/lam; 
+  } 
+  # Having found w (within tol), get lambda 
+  x1 = A%*%x; lam=sum(x1); x=x1/lam;   
+  return(list(lambda=lam,w=x/sum(x)))
+}  	
+
+# domEig <- function(A, tol = 1e-8){
+#   qmax <- 10*tol; lam <- 1;
+#   x <- rep(1, nrow(A))/nrow(A);
+#   while(qmax > tol){
+#     x1 <- A%*%x;
+#     qmax <- sum(abs(x1-lam*x));
+#     lam <- sum(x1);
+#     x <- x1/lam;
+#   }
+#   return(list(lambda = lam, w = x/sum(x)))
+# }
 
 
 # ---- IPM size touch: numerical implementation ----
@@ -2132,19 +2145,33 @@ eta_ij <- function(i, j, mz) {(j-1)*mz+i}
 # matrix whose (i,j) entry is eta(ij) 
 Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz) 
 
-A = matrix(0,mz*mt,mz*mt)
-Kvals = array(0,c(mz,mt,mz,mt))  
+# code modified from IPM book, Ch 6, SizeQualityExample.R
+A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));  
 for(i in 1:mz){
   for(j in 1:mt){
     for(k in 1:mt){
-      kvals = k_st(yz, yt[k], yz[i], yt[j], m.par_st)
-      A[Eta[, k], Eta[i, j]] = kvals
-      Kvals[ , k, i, j] = kvals
-    }
-  }
-  cat(i, "\n") 
+      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+      A[Eta[,k],Eta[i,j]]=kvals
+      Kvals[,k,i,j]=kvals
+      
+    }}
+  cat(i,"\n"); 
 }
-A <- hz*ht*A  
+A<-hz*ht*A;  
+
+# A = matrix(0,mz*mt,mz*mt)
+# Kvals = array(0,c(mz,mt,mz,mt))  
+# for(i in 1:mz){
+#   for(j in 1:mt){
+#     for(k in 1:mt){
+#       kvals = k_st(yz, yt[k], yz[i], yt[j], m.par_st)
+#       A[Eta[, k], Eta[i, j]] = kvals
+#       Kvals[ , k, i, j] = kvals
+#     }
+#   }
+#   cat(i, "\n") 
+# }
+# A <- hz*ht*A  
 
 ### calculate Lambda, w, and v
 out <- domEig(A) # returns lambda and a vector proportional to w
