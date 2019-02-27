@@ -2076,7 +2076,10 @@ P_z1z <- function(z1, z, t1, t, m.par_st){
 ### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
 
 F_z1z <- function(z1, z, t1, t, m.par_st){
-  return( s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
+  return(
+    unname(
+      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
+    )
   )
 }
 
