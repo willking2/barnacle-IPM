@@ -2043,13 +2043,10 @@ C_0z1 <- function(z1, m.par_st){
 
 C_0t1 <- function(t1, m.par_st){
   
-  p.den.rcst <- dbeta(t1
+  p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
                       , shape1 = 1
                       , shape2 = 1
   )
-  
-  
-  
   
   # shp1 <- m.par_st['rcst.s1']
   # shp2 <- m.par_st['rcst.s2']
