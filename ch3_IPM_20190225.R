@@ -991,7 +991,7 @@ G_z1z_simple <- function(z1, z, m.par_simple){
   
   ## based on growth regression coefficients, define mu and sigma of growth PDF
   mu <- m.par_simple['grow.int'] + m.par_simple['grow.z'] * z # below ceiling
-  mu.ceiling <- m.par_simple['grow.int'] + m.par_simple['grow.z'] * U1 # above ceiling
+  #mu.ceiling <- m.par_simple['grow.int'] + m.par_simple['grow.z'] * U1 # above ceiling
   sig <- m.par_simple['grow.sd']
   
   ## calculate growth PDF
