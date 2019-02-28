@@ -2001,15 +2001,9 @@ G_z1zt_st <- function(z1, z, t, m.par_st){
 T_t1t_st <- function(t1, t, m.par_st){
 
   p.den.touch <- dbeta(t1
-                       , shape1 = 1
-                       , shape2 = 1
+                       , shape1 = m.par_st['rcst.s1']
+                       , shape2 = m.par_st['rcst.s2']
   )
-  
-  
-  # p.den.touch <- dnorm(t1
-  #                      , m = t
-  #                      , sd = 1
-  # )
 
   ## output
   return(p.den.touch)
