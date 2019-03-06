@@ -126,6 +126,24 @@ p_bz_st(6, 0.5, m.par_st)
 p_bz_st(7, 0.5, m.par_st)
 
 
+### IPM size touch: fertility with ceiling ####
+
+b_z <- function(z){
+  # from Strathmann
+  
+  p.bz <- ifelse(z <= Uz1
+                 , 0.147 * (10 * z)^2.74
+                 , 0.147 * (10 * Uz1)^2.74
+  )
+  
+  return(p.bz)
+}
+
+# test
+b_z(3)
+b_z(6)
+b_z(10)
+
 ### archive: functions without ceilings ####
 
 s_z_st <- function(z, m.par_st){
@@ -204,4 +222,11 @@ p_bz_st <- function(z, t, m.par_st){
   # output
   return( unname(p) )
 }
+
+b_z <- function(z){
+  # from Strathmann
+  p.bz <- 0.147 * (10 * z)^2.74
+  return(p.bz)
+}
+
 
