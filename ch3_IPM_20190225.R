@@ -1955,47 +1955,27 @@ s_z_st <- function(z, m.par_st){
 G_z1zt_st <- function(z1, z, t, m.par_st){
   
   ## based on growth regression coefficients, define mu and sigma of growth PDF
-  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t # below ceiling
-  #mu.ceiling <- m.par_simple['grow.int'] + m.par_simple['grow.z'] * U1 # above ceiling
-  ## Note: ceiling is implemented in mk_K, below. just keeping code here to see it.
+  # below size ceiling
+  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
+  # above size ceiling
+  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
+  
   sig <- m.par_st['grow.sd']
   
   ## calculate growth PDF
-  
-  p.den.grow <- dnorm(z1, mean = mu, sd = sig)
+  # have to loop b/c it's a PDF, not a probability
+  p.den.grow <- c()
+  for(q in 1:length(z1)){
+    p.den.grow[q] <- ifelse(z <= Uz1
+                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
+                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
+    )
+  }
   
   ## output
   return(p.den.grow)
   
-  
-  
-  
-  ## graveyard
-  
-  # p.den.grow <- dnorm(z1, mean = mu, sd = sig)
-  
-  # #code for prevent shrinking. makes model output 'wonky'. not using.
-  # p.den.grow <- ifelse(z1 > z # condition
-  #                      , dnorm(z1, mean = mu, sd = sig) # if true. pdf of new size z1
-  #                      , 0 # if false. forbid barnacles from shrinking
-  # )
-  
-  # ##code for doing ceiling manually within function. However, do not use, b/c it messes up
-  ##the numerical implementation of the kernel. Do the ceiling when forming mk_k.
-  # # make blank vector
-  # p.den.grow <- c()
-  # 
-  # loop through z1
-  #   for( j in 1:length(z1) ){
-  #     p.den.grow[j] <- ifelse(z <= U1
-  #                             , dnorm(z1[j], mean = mu, sd = sig) # below ceiling
-  #                             , dnorm(z1[j], mean = mu.ceiling, sd = sig) # above ceiling
-  #     )
-  #   }
-  # }
-  
 }
-
 ### touch dynamics: T(t', t)
 
 T_t1t_st <- function(t1, t, m.par_st){
