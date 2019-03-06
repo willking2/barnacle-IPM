@@ -28,7 +28,7 @@ s_z_simple <- function(z, m.par_simple){
 
 # ceiling for size is Uz1 = 6
 
-### IPM size touch: survival ####
+### IPM size touch: survival with ceiling ####
 
 s_z_st <- function(z, m.par_st){
   
@@ -58,7 +58,7 @@ s_z_st(6, m.par_st)
 s_z_st(7, m.par_st)
 
 
-### IPM size touch: Growth ####
+### IPM size touch: Growth with ceiling ####
 
 
 G_z1zt_st <- function(z1, z, t, m.par_st){
@@ -100,7 +100,33 @@ G_z1zt_st(c(6, 6, 6), 6, 0.5, m.par_st)
 G_z1zt_st(c(6, 6, 6), 7, 0.5, m.par_st)
 
 
-### archive: size and growth functions without ceilings
+### IPM size touch: probability reproduction with ceiling ####
+
+p_bz_st <- function(z, t, m.par_st){
+  ### convert z to v
+  v <- ifelse(z <= Uz1
+              , z * 131.18 - 152.52 # below ceiling
+              , Uz1 * 131.18 - 152.52 # above ceiling
+  )
+  
+  # linear predictor
+  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+  
+  # back transform from logit
+  p <- 1/(1+exp(-linear.p))
+  
+  # output
+  return( unname(p) )
+}
+
+# test
+p_bz_st(3, 0.5, m.par_st)
+p_bz_st(3, 1, m.par_st)
+p_bz_st(6, 0.5, m.par_st)
+p_bz_st(7, 0.5, m.par_st)
+
+
+### archive: functions without ceilings ####
 
 s_z_st <- function(z, m.par_st){
   
@@ -167,3 +193,15 @@ G_z1zt_st <- function(z1, z, t, m.par_st){
   # }
   
 }
+
+p_bz_st <- function(z, t, m.par_st){
+  # convert z to v
+  v <- z * 131.18 - 152.52
+  # linear predictor
+  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+  # back transform from logit
+  p <- 1/(1+exp(-linear.p))
+  # output
+  return( unname(p) )
+}
+
