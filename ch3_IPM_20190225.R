@@ -1992,21 +1992,33 @@ T_t1t_st <- function(t1, t, m.par_st){
 ### prob reproduce: p_bz
 
 p_bz_st <- function(z, t, m.par_st){
-  # convert z to v
-  v <- z * 131.18 - 152.52
+  ### convert z to v
+  v <- ifelse(z <= Uz1
+              , z * 131.18 - 152.52 # below ceiling
+              , Uz1 * 131.18 - 152.52 # above ceiling
+  )
+  
   # linear predictor
   linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+  
   # back transform from logit
   p <- 1/(1+exp(-linear.p))
+  
   # output
   return( unname(p) )
 }
+
 
 ### fecundity: b_z
 
 b_z <- function(z){
   # from Strathmann
-  p.bz <- 0.147 * (10 * z)^2.74
+  
+  p.bz <- ifelse(z <= Uz1
+                 , 0.147 * (10 * z)^2.74
+                 , 0.147 * (10 * Uz1)^2.74
+  )
+  
   return(p.bz)
 }
 
