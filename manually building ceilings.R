@@ -24,9 +24,9 @@ s_z_simple <- function(z, m.par_simple){
   # )
 }
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-### for IPM size-touch
-# ceilings are Uz1 = 6 and Ut1 = 0.8, respectively
+### ceilings for IPM size-touch~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ####
+
+# ceiling for size is Uz1 = 6
 
 ### IPM size touch: survival ####
 
@@ -99,3 +99,71 @@ G_z1zt_st(c(2, 3, 4), 1, 0.5, m.par_st)
 G_z1zt_st(c(6, 6, 6), 6, 0.5, m.par_st)
 G_z1zt_st(c(6, 6, 6), 7, 0.5, m.par_st)
 
+
+### archive: size and growth functions without ceilings
+
+s_z_st <- function(z, m.par_st){
+  
+  ## linear predictor
+  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z # for cases below ceiling
+  # linear.p.ceiling <- m.par_simple['surv.int'] + m.par_simple['surv.z'] * U1 # for cases > U1
+  ## Note: ceiling is implemented in mk_K, below. just keeping code here to see it.
+  
+  ## back transform from logit
+  p <- 1/(1+exp(-linear.p))
+  
+  
+  
+  ## output
+  return( unname(p) )
+  
+  # # code for manually doing ceiling
+  # p <- ifelse(z <= U1
+  #             , 1/(1+exp(-linear.p)) # below ceiling; use regression coeff of z
+  #             , 1/(1+exp(-linear.p.ceiling)) # above ceiling; use vital rates of U1
+  # )
+}
+
+G_z1zt_st <- function(z1, z, t, m.par_st){
+  
+  ## based on growth regression coefficients, define mu and sigma of growth PDF
+  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t # below ceiling
+  #mu.ceiling <- m.par_simple['grow.int'] + m.par_simple['grow.z'] * U1 # above ceiling
+  ## Note: ceiling is implemented in mk_K, below. just keeping code here to see it.
+  sig <- m.par_st['grow.sd']
+  
+  ## calculate growth PDF
+  
+  p.den.grow <- dnorm(z1, mean = mu, sd = sig)
+  
+  ## output
+  return(p.den.grow)
+  
+  
+  
+  
+  ## graveyard
+  
+  # p.den.grow <- dnorm(z1, mean = mu, sd = sig)
+  
+  # #code for prevent shrinking. makes model output 'wonky'. not using.
+  # p.den.grow <- ifelse(z1 > z # condition
+  #                      , dnorm(z1, mean = mu, sd = sig) # if true. pdf of new size z1
+  #                      , 0 # if false. forbid barnacles from shrinking
+  # )
+  
+  # ##code for doing ceiling manually within function. However, do not use, b/c it messes up
+  ##the numerical implementation of the kernel. Do the ceiling when forming mk_k.
+  # # make blank vector
+  # p.den.grow <- c()
+  # 
+  # loop through z1
+  #   for( j in 1:length(z1) ){
+  #     p.den.grow[j] <- ifelse(z <= U1
+  #                             , dnorm(z1[j], mean = mu, sd = sig) # below ceiling
+  #                             , dnorm(z1[j], mean = mu.ceiling, sd = sig) # above ceiling
+  #     )
+  #   }
+  # }
+  
+}
