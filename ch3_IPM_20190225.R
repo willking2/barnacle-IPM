@@ -1931,23 +1931,23 @@ names(m.par_st) <- c(
 s_z_st <- function(z, m.par_st){
   
   ## linear predictor
-  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z # for cases below ceiling
-  # linear.p.ceiling <- m.par_simple['surv.int'] + m.par_simple['surv.z'] * U1 # for cases > U1
-  ## Note: ceiling is implemented in mk_K, below. just keeping code here to see it.
   
-  ## back transform from logit
-  p <- 1/(1+exp(-linear.p))
+  # below size ceiling
+  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
+  # above size ceiling
+  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
   
-  
+  # impose ceiling and backtransform from logit
+  p <- ifelse(z <= Uz1
+              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
+              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
+  )
   
   ## output
   return( unname(p) )
   
-  # # code for manually doing ceiling
-  # p <- ifelse(z <= U1
-  #             , 1/(1+exp(-linear.p)) # below ceiling; use regression coeff of z
-  #             , 1/(1+exp(-linear.p.ceiling)) # above ceiling; use vital rates of U1
-  # )
+  # ## back transform from logit
+  # p <- 1/(1+exp(-linear.p))
 }
 
 ### growth: G(z', z, t)
