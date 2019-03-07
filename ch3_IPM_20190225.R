@@ -1214,6 +1214,8 @@ plot(stable.z.dist_simple/diff(meshpts_simple)[1]  ~ meshpts_simple
 
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
+# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+
 ### function to compute lambda from a bootstrapped data set in format required by library(boot)
 boot.lam <- function(dataset, sample.index) {
   
@@ -2146,6 +2148,8 @@ v <- v/sum(v)
 # ---- *slow* IPM size touch: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
+# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+
 ### function to compute lambda from a bootstrapped data set in format required by library(boot)
 boot.lam.st <- function(dataset, sample.index) {
   
@@ -2162,15 +2166,12 @@ boot.lam.st <- function(dataset, sample.index) {
   
   ## growth
   
-  # non-constant variance
   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
   
   #z.growth <- boot.data.growth$z
-  vfix <- varFixed(~(1/boot.data.growth$z))
-  mod.Grow <- gls(z1 ~ z
-                  # , weights = vfix
-                  , data = boot.data.growth
-                  
+  mod.Grow_st <- lm(z1 ~ z * touch_pct
+                    , data = boot.data.growth
+                    
   )
   
   ## recruit size distribution
@@ -2180,45 +2181,51 @@ boot.lam.st <- function(dataset, sample.index) {
   
   ### Store the estimated parameters
   
-  m.par_simple <- c(
+  m.par_st <- c(
     surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_simple)
-    , grow.sd = summary(mod.Grow_simple)$sigma
+    , grow = coef(mod.Grow_st)
+    , grow.sd = summary(mod.Grow_st)$sigma
     , rcsz = coef(mod.Rcsz)
     , rcsz.sd = summary(mod.Rcsz)$sigma
+    , rcst = coef(betafit_t)
     , p.r = p.r.est
-    , repr = coef(reprodyn.1_sizeonly)
+    , repr = coef(reprodyn.1b)
     #, U1 = U1
   )
   
-  names(m.par_simple) <- c(
+  names(m.par_st) <- c(
     'surv.int'
     , 'surv.z'
     , 'grow.int'
     , 'grow.z'
+    , 'grow.t'
+    , 'grow.zt'
     , 'grow.sd'
     , 'rcsz.int'
     , 'rcsz.sd'
+    , 'rcst.s1'
+    , 'rcst.s2'
     , 'p.r'
-    , 'repr.int' # model is for volume, NOt operc length
+    , 'repr.int' # model is for volume, NOT operc length
+    , 'repr.t' # model is for volume, NOT operc length
     , 'repr.v' # v here b/c it's volume, NOT operc length
     #, 'U1'
   )
   
-  ### implement IPM and calculate lambda
-  # also see IPM: general parameters
-  
-  IPM.est <- mk_K(nBigMatrix, m.par_simple, 0.1, 10)
-  
-  lam.boot <- Re(eigen(IPM.est$K, only.values = TRUE)$values[1])
-  cat(lam.boot, "\n")
-  
-  return(lam.boot)
+  # ### implement IPM and calculate lambda
+  # # also see IPM: general parameters
+  # 
+  # IPM.est <- mk_K(nBigMatrix, m.par_simple, 0.1, 10)
+  # 
+  # lam.boot <- Re(eigen(IPM.est$K, only.values = TRUE)$values[1])
+  # cat(lam.boot, "\n")
+  # 
+  # return(lam.boot)
 }
 
 ### do the bootstrap (code takes ~ X min to run)
 starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam, simple = TRUE,
+boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
                  R = 1000)
 endtime <- Sys.time()
 
