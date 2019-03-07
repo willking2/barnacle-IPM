@@ -441,68 +441,56 @@ plot(x = dat$touch_pct[is.na(dat$z1) == F],
 qqnorm(resid(growth.1))
 qqline(resid(growth.1))
 
-
-### try to model the non-constant variance ###
-
-# hetergeneity of variance; see Zurr pg. 74 and 90
-# variance seems to be greater at smaller body sizes; model fixed variance structure where variance is inversely proportional to body size
-
-dat.growth <- dat[is.na(dat$z1) == F, ]
-z.growth <- dat.growth$z
-
-growth.1_lm <- gls(z1 ~ z * touch_pct
-                   , data = dat.growth
-)
-vfix <- varFixed(~(1/z.growth))
-
-growth.1_gls <- gls(z1 ~ z * touch_pct
-                    , weights = vfix
-                    , data = dat.growth
-                    
-)
-
-AIC(growth.1_lm, growth.1_gls) # prefers gls
-BIC(growth.1_lm, growth.1_gls) # prefers gls
-
-## determine fixed structure of gls
-Anova(growth.1_gls) # effect of size, and size*touch
-
-## model validation
-
-# resid vs. fitted
-plot(x = fitted(growth.1_gls),
-     y = resid(growth.1_gls
-               , type = 'normalized'),
-     xlab = 'fitted values',
-     ylab = 'residuals')
-lines(lowess(fitted(growth.1_gls), resid(growth.1_gls)), col="blue", lwd=2)
-
-
-# resid vs. explanatory
-plot(x = dat$z[is.na(dat$z1) == F],
-     y = resid(growth.1_gls, type = 'normalized')
-)
-
-plot(x = dat$touch_pct[is.na(dat$z1) == F],
-     y = resid(growth.1_gls, type = 'normalized')
-)
-
-qqnorm(resid(growth.1_gls))
-qqline(resid(growth.1_gls))
+# 
+# ### [archive] try to model the non-constant variance ###
+# 
+# # hetergeneity of variance; see Zurr pg. 74 and 90
+# # variance seems to be greater at smaller body sizes; model fixed variance structure where variance is inversely proportional to body size
+# 
+# dat.growth <- dat[is.na(dat$z1) == F, ]
+# z.growth <- dat.growth$z
+# 
+# growth.1_lm <- gls(z1 ~ z * touch_pct
+#                    , data = dat.growth
+# )
+# vfix <- varFixed(~z.growth)
+# 
+# growth.1_gls <- gls(z1 ~ z * touch_pct
+#                     , weights = vfix
+#                     , data = dat.growth
+#                     
+# )
+# 
+# AIC(growth.1_lm, growth.1_gls) # prefers gls
+# BIC(growth.1_lm, growth.1_gls) # prefers gls
+# 
+# ## determine fixed structure of gls
+# Anova(growth.1_gls) # effect of size, and size*touch
+# 
+# ## model validation
+# 
+# # resid vs. fitted
+# plot(x = fitted(growth.1_gls),
+#      y = resid(growth.1_gls
+#                , type = 'normalized'),
+#      xlab = 'fitted values',
+#      ylab = 'residuals')
+# lines(lowess(fitted(growth.1_gls), resid(growth.1_gls)), col="blue", lwd=2)
+# 
+# 
+# # resid vs. explanatory
+# plot(x = dat$z[is.na(dat$z1) == F],
+#      y = resid(growth.1_gls, type = 'normalized')
+# )
+# 
+# plot(x = dat$touch_pct[is.na(dat$z1) == F],
+#      y = resid(growth.1_gls, type = 'normalized')
+# )
+# 
+# qqnorm(resid(growth.1_gls))
+# qqline(resid(growth.1_gls))
 
 # ---- plot: growth ----
-
-# model again, for convenience
-dat.growth <- dat[is.na(dat$z1) == F, ]
-z.growth <- dat.growth$z
-vfix <- varFixed(~(1/z.growth))
-
-growth.1_gls <- gls(z1 ~ z * touch_pct
-                    , weights = vfix
-                    , data = dat.growth
-                    
-)
-
 
 ### calculate predictions and CIs
 
@@ -516,7 +504,7 @@ newgrowth.00 <- expand.grid(
   , z1 = 0
 )
 # add predictions
-growthpreds.00 <- predict(growth.1_gls, newgrowth.00, se.fit = T)
+growthpreds.00 <- predict(growth.1, newgrowth.00, se.fit = T)
 # CIs
 growthCI.upper.00 <- growthpreds.00$fit + critval*growthpreds.00$se.fit
 growthCI.lower.00 <- growthpreds.00$fit - critval*growthpreds.00$se.fit
@@ -531,7 +519,7 @@ newgrowth.04 <- expand.grid(
   , z1 = 0
 )
 # add predictions
-growthpreds.04 <- predict(growth.1_gls, newgrowth.04, se.fit = T)
+growthpreds.04 <- predict(growth.1, newgrowth.04, se.fit = T)
 # CIs
 growthCI.upper.04 <- growthpreds.04$fit + critval*growthpreds.04$se.fit
 growthCI.lower.04 <- growthpreds.04$fit - critval*growthpreds.04$se.fit
@@ -545,7 +533,7 @@ newgrowth.08 <- expand.grid(
   , z1 = 0
 )
 # add predictions
-growthpreds.08 <- predict(growth.1_gls, newgrowth.08, se.fit = T)
+growthpreds.08 <- predict(growth.1, newgrowth.08, se.fit = T)
 # CIs
 growthCI.upper.08 <- growthpreds.08$fit + critval*growthpreds.08$se.fit
 growthCI.lower.08 <- growthpreds.08$fit - critval*growthpreds.08$se.fit
@@ -888,19 +876,12 @@ mod.Surv <- glm(Surv ~ z
 
 ### growth
 
-# code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-dat.growth <- dat[is.na(dat$z1) == F, ]
-z.growth <- dat.growth$z
-vfix <- varFixed(~(1/z.growth))
+# code repeated here for ease of use. see "analyze: growth"
 
 ## model w/ body size only (lumping all crowding); keep it simple to start with
-mod.Grow_simple <- gls(z1 ~ z
-                       , weights = vfix
-                       , data = dat.growth
-                       
+mod.Grow_simple <- lm(z1 ~ z * touch_pct
+                      , data = dat
 )
-
-
 
 ### reproduction
 # s(z)*Pb(z)*b(z)*Pr*C0(z')
@@ -1229,7 +1210,7 @@ plot(stable.z.dist_simple/diff(meshpts_simple)[1]  ~ meshpts_simple
 
 
 
-# ---- *slow* IPM simple: lambda CI  ----
+# ---- *slow, ~ 7 min* IPM simple: lambda CI  ----
 
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -1250,10 +1231,11 @@ boot.lam <- function(dataset, sample.index) {
   ## growth
   # non-constant variance
   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  #z.growth <- boot.data.growth$z
+  # z.growth <- boot.data.growth$z
+  # vfix <- varFixed(~(1/z.growth))
   vfix <- varFixed(~(1/boot.data.growth$z))
   mod.Grow <- gls(z1 ~ z
-                  # , weights = vfix
+                  #, weights = vfix
                   , data = boot.data.growth
                   
   )
@@ -2104,7 +2086,7 @@ domEig=function(A,tol=1e-8) {
 # }
 
 
-# ---- IPM size touch: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -2161,6 +2143,88 @@ w <- Re(matrix(out$w, mz, mt))
 w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
+
+# ---- *slow* IPM size touch: lambda CI ----
+# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+
+### function to compute lambda from a bootstrapped data set in format required by library(boot)
+boot.lam.st <- function(dataset, sample.index) {
+  
+  ### extract the data used to make this fit
+  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+  
+  ### fit the functions
+  
+  ## survival
+  mod.Surv <- glm(Surv ~ z
+                  , family = binomial
+                  , data = boot.data
+  )
+  
+  ## growth
+  
+  # non-constant variance
+  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+  
+  #z.growth <- boot.data.growth$z
+  vfix <- varFixed(~(1/boot.data.growth$z))
+  mod.Grow <- gls(z1 ~ z
+                  # , weights = vfix
+                  , data = boot.data.growth
+                  
+  )
+  
+  ## recruit size distribution
+  mod.Rcsz <- lm(z ~ 1 
+                 , data = rec
+  )
+  
+  ### Store the estimated parameters
+  
+  m.par_simple <- c(
+    surv = coef(mod.Surv)
+    , grow = coef(mod.Grow_simple)
+    , grow.sd = summary(mod.Grow_simple)$sigma
+    , rcsz = coef(mod.Rcsz)
+    , rcsz.sd = summary(mod.Rcsz)$sigma
+    , p.r = p.r.est
+    , repr = coef(reprodyn.1_sizeonly)
+    #, U1 = U1
+  )
+  
+  names(m.par_simple) <- c(
+    'surv.int'
+    , 'surv.z'
+    , 'grow.int'
+    , 'grow.z'
+    , 'grow.sd'
+    , 'rcsz.int'
+    , 'rcsz.sd'
+    , 'p.r'
+    , 'repr.int' # model is for volume, NOt operc length
+    , 'repr.v' # v here b/c it's volume, NOT operc length
+    #, 'U1'
+  )
+  
+  ### implement IPM and calculate lambda
+  # also see IPM: general parameters
+  
+  IPM.est <- mk_K(nBigMatrix, m.par_simple, 0.1, 10)
+  
+  lam.boot <- Re(eigen(IPM.est$K, only.values = TRUE)$values[1])
+  cat(lam.boot, "\n")
+  
+  return(lam.boot)
+}
+
+### do the bootstrap (code takes ~ X min to run)
+starttime <- Sys.time()
+boot.out.st <- boot(data = dat, statistic = boot.lam, simple = TRUE,
+                 R = 1000)
+endtime <- Sys.time()
+
+boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+
 
 # ---- IPM size touch: perturbation analysis ----
 
