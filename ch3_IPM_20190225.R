@@ -2122,39 +2122,25 @@ yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
 
 ### compute 4D kernel and 2D iteration matrix
 
-# Function eta to put kernel values in their proper place in A 
-eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-
-# matrix whose (i,j) entry is eta(ij) 
-Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz) 
-
-# code modified from IPM book, Ch 6, SizeQualityExample.R
-A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));  
-for(i in 1:mz){
-  for(j in 1:mt){
-    for(k in 1:mt){
-      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-      A[Eta[,k],Eta[i,j]]=kvals
-      Kvals[,k,i,j]=kvals
-      
-    }}
-  cat(i,"\n"); 
-}
-A<-hz*ht*A;  
-
-# A = matrix(0,mz*mt,mz*mt)
-# Kvals = array(0,c(mz,mt,mz,mt))  
+# # Function eta to put kernel values in their proper place in A 
+# eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+# 
+# # matrix whose (i,j) entry is eta(ij) 
+# Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz) 
+# 
+# # code modified from IPM book, Ch 6, SizeQualityExample.R
+# A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));  
 # for(i in 1:mz){
 #   for(j in 1:mt){
 #     for(k in 1:mt){
-#       kvals = k_st(yz, yt[k], yz[i], yt[j], m.par_st)
-#       A[Eta[, k], Eta[i, j]] = kvals
-#       Kvals[ , k, i, j] = kvals
-#     }
-#   }
-#   cat(i, "\n") 
+#       kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#       A[Eta[,k],Eta[i,j]]=kvals
+#       Kvals[,k,i,j]=kvals
+#       
+#     }}
+#   cat(i,"\n"); 
 # }
-# A <- hz*ht*A  
+# A<-hz*ht*A
 
 ### calculate Lambda, w, and v
 out <- domEig(A) # returns lambda and a vector proportional to w
