@@ -879,7 +879,7 @@ mod.Surv <- glm(Surv ~ z
 # code repeated here for ease of use. see "analyze: growth"
 
 ## model w/ body size only (lumping all crowding); keep it simple to start with
-mod.Grow_simple <- lm(z1 ~ z * touch_pct
+mod.Grow_simple <- lm(z1 ~ z
                       , data = dat
 )
 
@@ -1229,13 +1229,9 @@ boot.lam <- function(dataset, sample.index) {
   )
   
   ## growth
-  # non-constant variance
   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  # z.growth <- boot.data.growth$z
-  # vfix <- varFixed(~(1/z.growth))
-  vfix <- varFixed(~(1/boot.data.growth$z))
-  mod.Grow <- gls(z1 ~ z
-                  #, weights = vfix
+
+  mod.Grow <- lm(z1 ~ z
                   , data = boot.data.growth
                   
   )
@@ -1825,17 +1821,20 @@ mod.Surv <- glm(Surv ~ z
 
 ### growth
 
-# code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-dat.growth <- dat[is.na(dat$z1) == F, ]
-z.growth <- dat.growth$z
-vfix <- varFixed(~(1/z.growth))
-
 ## model w/ body size * touch
-mod.Grow_st <- gls(z1 ~ z * touch_pct
-                   , weights = vfix
+dat.growth <- dat[is.na(dat$z1) == F, ]
+
+mod.Grow_st <- lm(z1 ~ z * touch_pct
                    , data = dat.growth
                    
 )
+
+# # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
+
+# z.growth <- dat.growth$z
+# vfix <- varFixed(~(1/z.growth))
+
+
 
 ### reproduction
 # s(z)*Pb(z)*b(z)*Pr*C0(z')
