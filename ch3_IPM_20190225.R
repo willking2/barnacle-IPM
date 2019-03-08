@@ -2212,15 +2212,47 @@ boot.lam.st <- function(dataset, sample.index) {
     #, 'U1'
   )
   
-  # ### implement IPM and calculate lambda
-  # # also see IPM: general parameters
-  # 
-  # IPM.est <- mk_K(nBigMatrix, m.par_simple, 0.1, 10)
-  # 
-  # lam.boot <- Re(eigen(IPM.est$K, only.values = TRUE)$values[1])
-  # cat(lam.boot, "\n")
-  # 
-  # return(lam.boot)
+  ### implement IPM and calculate lambda
+  # following IPM book pg. 162-164 and SizeQualityExample.R
+  
+  ## compute meshpoints
+  mz <- 100 # number of size mesh points 
+  mt <- 50  # number of touch mesh points
+  Lz <- 0.1 # size lower bound
+  Uz<- 10  # size upper bound
+  Lt <- 0 # touch lower bound
+  Ut <- 1 # touch upper bound
+  hz <- (Uz-Lz)/mz # size mesh point breaks
+  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+  ht <- (Ut-Lt)/mt # touch mesh point breaks
+  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+  
+  ## compute 4D kernel and 2D iteration matrix
+  # Function eta to put kernel values in their proper place in A
+  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+  
+  # matrix whose (i,j) entry is eta(ij)
+  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+  
+  # code modified from IPM book, Ch 6, SizeQualityExample.R
+  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+  for(i in 1:mz){
+    for(j in 1:mt){
+      for(k in 1:mt){
+        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+        A[Eta[,k],Eta[i,j]]=kvals
+        Kvals[,k,i,j]=kvals
+        
+      }}
+    cat(i,"\n");
+  }
+  A<-hz*ht*A
+  
+  out <- domEig(A) # returns lambda and a vector proportional to w
+  lam.boot <- out$lambda
+  cat(lam.boot, "\n")
+  return(lam.boot)
+  
 }
 
 ### do the bootstrap (code takes ~ X min to run)
