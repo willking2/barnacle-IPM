@@ -2282,6 +2282,7 @@ boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 ### Compute elasticity matrix 
 repro.val <- matrix(v, mz, mt)
 stable.state <- matrix(w, mz, mt) 
+stable.state.vector <- apply(stable.state, 1, sum)
 v.dot.w <- sum(hz*ht*stable.state*repro.val)
 sens <- outer(repro.val,stable.state)/v.dot.w
 elas <- sens*Kvals/lam.stable
@@ -2295,59 +2296,85 @@ cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n")
 
 ### Plots
 
-# stable size distribution
+## stable size distribution
+
 plot(yz
-     ,apply(stable.state
-            ,1
-            ,sum)
-     , xlab = "Size x"
+     , (stable.state.vector/sum(stable.state.vector))*10
+     , xlab = "Operculum length, mm"
      , ylab = "Frequency"
      , type = "l"
+     , ylim = c(0, 1)
 )
 
-# stable size and crowding distribution
-image(yt
-      , yz
-      , t(stable.state)
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state
       , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Crowding"
-      , ylab = "Size"
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
 )
-contour(yt
-        , yz
-        , t(stable.state)
+contour(yz
+        , yt
+        , stable.state
         , add = TRUE
         , nlevels = 6
         , labcex = 0.8
 )
 
-# reproductive value
-image(yt
-      , yz
-      , t(repro.val)
+## reproductive value
+image(yz
+      , yt
+      , repro.val
       , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Crowding"
-      , ylab = "Size"
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
 )
-contour(yt
-        , yz
-        , t(repro.val)
+contour(yz
+        , yt
+        , repro.val
         , add = TRUE
         , nlevels = 6
         , labcex = 0.8
 )
 
-# total elasticity
+## total elasticity
 image(yt
       , yz
       , t(total.elas)
       , col = grey(seq(0.5, 1, length=100))
       , xlab = "Crowding"
-      , ylab = "Size"
+      , ylab = "Operculum length, mm"
 )
 contour(yt
         , yz
         , t(total.elas)
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
         , add = TRUE
         , nlevels = 6
         , labcex = 0.8
