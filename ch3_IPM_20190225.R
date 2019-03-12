@@ -1205,7 +1205,11 @@ stable.z.dist_simple <- w_simple/sum(w_simple) # scale eigenvector to discrete p
 
 plot(stable.z.dist_simple/diff(meshpts_simple)[1]  ~ meshpts_simple
      , type = 'l'
+     , xlab = 'Operculum length, mm'
+     , ylab = 'Probability'
+     , ylim = c(0, 1)
 ) 
+
 #from Monocarp Calculations.R
 
 
@@ -1341,6 +1345,15 @@ contour(x = meshpts
         , z = t(K.elas)
         , add = TRUE
 )
+
+## total elasticity (all transitions to anywhere)
+K.elas.total <- colSums(K.elas)
+plot(K.elas.total ~ meshpts
+     , xlab = 'Operculum length, mm'
+     , ylab = 'Total elasticity'
+     , type = 'l'
+     )
+
 
 ## calculate elasticity for P
 Pvals <- IPM.sys$P / h
