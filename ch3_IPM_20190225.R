@@ -265,7 +265,7 @@ plot(Surv ~ touch_pct
      , data = dat
 )
 
-# ---- determine touch distribution ----
+# ---- determine field touch distribution ----
 
 h_t <- hist(dat$touch_pct
             , freq = F
@@ -348,8 +348,74 @@ c(normalfit_t$aic, gammafit_t$aic, weibullfit_t$aic, betafit_t$aic) # favors bet
 c(normalfit_t$bic, gammafit_t$bic, weibullfit_t$bic, betafit_t$bic) # favors beta
 # based on AIC and BIC, go w/ beta distribution
 
+dev.off()
 
 
+# ---- determine touch distributions for IPMsizetouch treatments ----
+
+
+
+crowdy.x <- seq(0, 1, length = 100)
+
+# # field observed touch distribution
+# hist(dat$touch_pct
+#      , freq = F
+#      , xlim = c(0, 1)
+# )
+# lines(crowdy.x
+#       , dbeta(crowdy.x
+#               , shape1 = betafit_t$estimate[1] # 1
+#               , shape2 = betafit_t$estimate[2] # 3.61
+#       )
+#       , col = 'green'
+# )
+
+# mostly low crowd
+plot(crowdy.x
+      , dbeta(crowdy.x
+              , shape1 = 2
+              , shape2 = 50
+      )
+      , col = 'blue'
+     , type = 'l'
+     , ylab = 'density'
+)
+
+# mostly high crowd
+lines(crowdy.x
+      , dbeta(crowdy.x
+              , shape1 = 50
+              , shape2 = 2
+      )
+      , col = 'red'
+)
+
+# unimodal
+lines(crowdy.x
+      , dbeta(crowdy.x
+              , shape1 = 300
+              , shape2 = 300
+      )
+      , col = 'purple'
+)
+
+# uniform
+lines(crowdy.x
+      , dbeta(crowdy.x
+              , shape1 = 1
+              , shape2 = 1
+      )
+      , col = 'orange'
+)
+
+# field observed touch distribution
+lines(crowdy.x
+      , dbeta(crowdy.x
+              , shape1 = betafit_t$estimate[1] # 1
+              , shape2 = betafit_t$estimate[2] # 3.61
+      )
+      , col = 'green'
+)
 
 # ---- analyze: growth ----
 
