@@ -2,6 +2,7 @@
 ### Ch 3 - population model for B. glandula, IPM
 ### data from field survey of barnacles after 1 year (Jun 2017 - May 2018)
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~ Data Prep ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- load data and packages ----
 
 library(lme4)
@@ -221,7 +222,7 @@ dat$Surv <- as.factor(dat$Surv)
 
 ### general size structure
 
-hist(dat$z)
+hist(dat$z) # doesn't necessarily reflect actual field histogram -- field has way more recruits...
 hist(dat$z1)
 
 ### growth
@@ -451,7 +452,7 @@ lines(crowdy.x
       , col = 'green'
 )
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~~~~~~~~~~~~~~~~~~~~~~~ Regression analysis ~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- analyze: growth ----
 
 ### determine random structure
@@ -938,7 +939,7 @@ mtext('Probability of survival'
 )
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~ IPM simple ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM simple: general parameters ----
 
 ### ceiling 
@@ -1895,7 +1896,7 @@ legend('topright'
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~~~~~~~~~~~~~~~~~~~~~~~ IPM size only (= simple) ~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size only: general parameters ----
 
 ### ceiling 
@@ -2452,7 +2453,8 @@ contour(yz
 # 
 # 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - field: general parameters ----
+# ~~~~~~~~~~~~~~~~~~~~~~~ IPM size touch: prep ~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch: general parameters ----
 
 ### ceiling 
 # Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
@@ -2477,7 +2479,7 @@ total_rec <- mean(totrec$number_of_recruits) # mean total number of recruits for
 # calculate and set Pr
 p.r.est <- total_rec / total_larval_est
 
-# ---- IPM size touch - field: prepare regression models ----
+# ---- IPM size touch: prepare regression models ----
 
 ### survival
 
@@ -2498,8 +2500,8 @@ mod.Surv <- glm(Surv ~ z
 dat.growth <- dat[is.na(dat$z1) == F, ]
 
 mod.Grow_st <- lm(z1 ~ z * touch_pct
-                   , data = dat.growth
-                   
+                  , data = dat.growth
+                  
 )
 
 # # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
@@ -2540,7 +2542,7 @@ mod.Rcsz <- lm(z ~ 1
 # don't need a regression; just use beta distribution as determined above
 
 
-# ---- IPM size touch - field: prepare parameter estimates ----
+# ---- IPM size touch: prepare parameter estimates ----
 
 # IPM book pg. 23-24 (regressions), 48 (ceiling)
 
@@ -2576,7 +2578,9 @@ names(m.par_st) <- c(
 )
 
 
-# ---- IPM size touch - field: define kernel components ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aFrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+
+# ---- IPM size touch - aFrU: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -2726,7 +2730,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - field: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aFrU: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -2784,7 +2788,7 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - field: perturbation analysis ----
+# ---- IPM size touch - aFrU: perturbation analysis ----
 
 ### Compute elasticity matrix 
 repro.val_aFrU <- matrix(v, mz, mt)
@@ -2896,7 +2900,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - field: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aFrU: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -3016,132 +3020,8 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - low crowd, adult only: general parameters ----
-
-### ceiling 
-# Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
-Uz1 = 6
-# Ut1 refers to upper limit of touch t, beyond withich vital rates are the same as Ut1
-Ut1 = 0.8
-
-### number of 'bins' for iteration matrix
-nBigMatrix_z <- 500
-nBigMatrix_t <- 50
-
-### Probability of recruitment, Pr
-# a) IPM book pg. 23. Can estimate by dividing number of recruits by total larval production. A problem with this is that I didn't survey every adult barnacle. But I'm assuming closed population and other assumptions anyway, so just go ahead and do it.
-# b) can also adjust as needed to achieve desired lambda? Ken Sebens style
-
-# a) 
-# estimate total larval production
-total_larval_est <- sum( 0.147 * (10 * dat$z[dat$Surv == 1])^2.74 )
-# total number of recruits
-total_rec <- mean(totrec$number_of_recruits) # mean total number of recruits for RT3
-
-# calculate and set Pr
-p.r.est <- total_rec / total_larval_est
-
-# ---- IPM size touch - low crowd, adult only: prepare regression models ----
-
-### survival
-
-# final model from analysis only has body size anyway, so was prepared in section "analyze: survival", above.
-# it is named mod.Surv
-# repeated here for ease of use
-# this is the exact same model as used in IPM_simple
-mod.Surv <- glm(Surv ~ z
-                , family = binomial
-                , data = dat
-)
-
-
-
-### growth
-
-## model w/ body size * touch
-dat.growth <- dat[is.na(dat$z1) == F, ]
-
-mod.Grow_st <- lm(z1 ~ z * touch_pct
-                  , data = dat.growth
-                  
-)
-
-# # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-
-# z.growth <- dat.growth$z
-# vfix <- varFixed(~(1/z.growth))
-
-
-
-### reproduction
-# s(z)*Pb(z)*b(z)*Pr*C0(z')
-
-## probability of reproduction Pb(z)
-# use ch 2 field regressions, see ch2>expt2.4.1_field-reproduction_bodyweights_20181106.R, but here using the version that you created for use in ch 3 (see 'load data and packages' section, above)
-# here using the model that includes size + touch (no intxn effect)
-reprodyn.1b
-# note that this model's coefficients are for VOLUME, not operc length. need to convert in IPM before use:
-# # predict volume (v) from operc length (z), using regression from ch3_operctovol_20190102.R
-# dat$v <- dat$z * 131.18 - 152.52
-
-
-## fecundity b(z)
-# offspring: # embryos = 0.147 * (operculum length in mm^2.74). Based on Strathmann et al. 1981 Oecologia (see Schubart thesis pg. 20 and email w/ Strathmann)
-# operculum length multiplied by 10 to make it mm
-# 0.147 * (10 * z)^2.74
-
-## probability recruitment Pr
-# unknown constant, set in "IPM_st: general parameters"
-
-## recruit size distribution
-# intercpet only; recruit size not dependent on parent size
-# recruit size has Gaussian distribution w/ constant mean
-mod.Rcsz <- lm(z ~ 1 
-               , data = rec
-)
-
-## recruit touch distribution
-# don't need a regression; just use beta distribution as determined above
-
-
-# ---- IPM size touch - low crowd, adult only: prepare parameter estimates ----
-
-# IPM book pg. 23-24 (regressions), 48 (ceiling)
-
-m.par_st <- c(
-  surv = coef(mod.Surv)
-  , grow = coef(mod.Grow_st)
-  , grow.sd = summary(mod.Grow_st)$sigma
-  , rcsz = coef(mod.Rcsz)
-  , rcsz.sd = summary(mod.Rcsz)$sigma
-  , rcst = coef(betafit_t)
-  , p.r = p.r.est
-  , repr = coef(reprodyn.1b)
-  #, U1 = U1
-)
-
-names(m.par_st) <- c(
-  'surv.int'
-  , 'surv.z'
-  , 'grow.int'
-  , 'grow.z'
-  , 'grow.t'
-  , 'grow.zt'
-  , 'grow.sd'
-  , 'rcsz.int'
-  , 'rcsz.sd'
-  , 'rcst.s1'
-  , 'rcst.s2'
-  , 'p.r'
-  , 'repr.int' # model is for volume, NOT operc length
-  , 'repr.t' # model is for volume, NOT operc length
-  , 'repr.v' # v here b/c it's volume, NOT operc length
-  #, 'U1'
-)
-
-
-# ---- IPM size touch - low crowd, adult only: define kernel components ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aLrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aLrU: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -3291,7 +3171,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - low crowd, adult only: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aLrU: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -3349,7 +3229,7 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - low crowd, adult only: perturbation analysis ----
+# ---- IPM size touch - aLrU: perturbation analysis ----
 
 ### Compute elasticity matrix 
 repro.val_aLrU <- matrix(v, mz, mt)
@@ -3452,7 +3332,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - low crowd, adult only: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aLrU: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -3572,132 +3452,8 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - high crowd, adult only: general parameters ----
-
-### ceiling 
-# Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
-Uz1 = 6
-# Ut1 refers to upper limit of touch t, beyond withich vital rates are the same as Ut1
-Ut1 = 0.8
-
-### number of 'bins' for iteration matrix
-nBigMatrix_z <- 500
-nBigMatrix_t <- 50
-
-### Probability of recruitment, Pr
-# a) IPM book pg. 23. Can estimate by dividing number of recruits by total larval production. A problem with this is that I didn't survey every adult barnacle. But I'm assuming closed population and other assumptions anyway, so just go ahead and do it.
-# b) can also adjust as needed to achieve desired lambda? Ken Sebens style
-
-# a) 
-# estimate total larval production
-total_larval_est <- sum( 0.147 * (10 * dat$z[dat$Surv == 1])^2.74 )
-# total number of recruits
-total_rec <- mean(totrec$number_of_recruits) # mean total number of recruits for RT3
-
-# calculate and set Pr
-p.r.est <- total_rec / total_larval_est
-
-# ---- IPM size touch - high crowd, adult only: prepare regression models ----
-
-### survival
-
-# final model from analysis only has body size anyway, so was prepared in section "analyze: survival", above.
-# it is named mod.Surv
-# repeated here for ease of use
-# this is the exact same model as used in IPM_simple
-mod.Surv <- glm(Surv ~ z
-                , family = binomial
-                , data = dat
-)
-
-
-
-### growth
-
-## model w/ body size * touch
-dat.growth <- dat[is.na(dat$z1) == F, ]
-
-mod.Grow_st <- lm(z1 ~ z * touch_pct
-                  , data = dat.growth
-                  
-)
-
-# # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-
-# z.growth <- dat.growth$z
-# vfix <- varFixed(~(1/z.growth))
-
-
-
-### reproduction
-# s(z)*Pb(z)*b(z)*Pr*C0(z')
-
-## probability of reproduction Pb(z)
-# use ch 2 field regressions, see ch2>expt2.4.1_field-reproduction_bodyweights_20181106.R, but here using the version that you created for use in ch 3 (see 'load data and packages' section, above)
-# here using the model that includes size + touch (no intxn effect)
-reprodyn.1b
-# note that this model's coefficients are for VOLUME, not operc length. need to convert in IPM before use:
-# # predict volume (v) from operc length (z), using regression from ch3_operctovol_20190102.R
-# dat$v <- dat$z * 131.18 - 152.52
-
-
-## fecundity b(z)
-# offspring: # embryos = 0.147 * (operculum length in mm^2.74). Based on Strathmann et al. 1981 Oecologia (see Schubart thesis pg. 20 and email w/ Strathmann)
-# operculum length multiplied by 10 to make it mm
-# 0.147 * (10 * z)^2.74
-
-## probability recruitment Pr
-# unknown constant, set in "IPM_st: general parameters"
-
-## recruit size distribution
-# intercpet only; recruit size not dependent on parent size
-# recruit size has Gaussian distribution w/ constant mean
-mod.Rcsz <- lm(z ~ 1 
-               , data = rec
-)
-
-## recruit touch distribution
-# don't need a regression; just use beta distribution as determined above
-
-
-# ---- IPM size touch - high crowd, adult only: prepare parameter estimates ----
-
-# IPM book pg. 23-24 (regressions), 48 (ceiling)
-
-m.par_st <- c(
-  surv = coef(mod.Surv)
-  , grow = coef(mod.Grow_st)
-  , grow.sd = summary(mod.Grow_st)$sigma
-  , rcsz = coef(mod.Rcsz)
-  , rcsz.sd = summary(mod.Rcsz)$sigma
-  , rcst = coef(betafit_t)
-  , p.r = p.r.est
-  , repr = coef(reprodyn.1b)
-  #, U1 = U1
-)
-
-names(m.par_st) <- c(
-  'surv.int'
-  , 'surv.z'
-  , 'grow.int'
-  , 'grow.z'
-  , 'grow.t'
-  , 'grow.zt'
-  , 'grow.sd'
-  , 'rcsz.int'
-  , 'rcsz.sd'
-  , 'rcst.s1'
-  , 'rcst.s2'
-  , 'p.r'
-  , 'repr.int' # model is for volume, NOT operc length
-  , 'repr.t' # model is for volume, NOT operc length
-  , 'repr.v' # v here b/c it's volume, NOT operc length
-  #, 'U1'
-)
-
-
-# ---- IPM size touch - high crowd, adult only: define kernel components ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aHrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aHrU: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -3847,7 +3603,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - high crowd, adult only: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aHrU: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -3905,7 +3661,7 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - high crowd, adult only: perturbation analysis ----
+# ---- IPM size touch - aHrU: perturbation analysis ----
 
 ### Compute elasticity matrix 
 repro.val_aHrU <- matrix(v, mz, mt)
@@ -4008,7 +3764,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - high crowd, adult only: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aHrU: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -4128,132 +3884,8 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - med crowd, adult only: general parameters ----
-
-### ceiling 
-# Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
-Uz1 = 6
-# Ut1 refers to upper limit of touch t, beyond withich vital rates are the same as Ut1
-Ut1 = 0.8
-
-### number of 'bins' for iteration matrix
-nBigMatrix_z <- 500
-nBigMatrix_t <- 50
-
-### Probability of recruitment, Pr
-# a) IPM book pg. 23. Can estimate by dividing number of recruits by total larval production. A problem with this is that I didn't survey every adult barnacle. But I'm assuming closed population and other assumptions anyway, so just go ahead and do it.
-# b) can also adjust as needed to achieve desired lambda? Ken Sebens style
-
-# a) 
-# estimate total larval production
-total_larval_est <- sum( 0.147 * (10 * dat$z[dat$Surv == 1])^2.74 )
-# total number of recruits
-total_rec <- mean(totrec$number_of_recruits) # mean total number of recruits for RT3
-
-# calculate and set Pr
-p.r.est <- total_rec / total_larval_est
-
-# ---- IPM size touch - med crowd, adult only: prepare regression models ----
-
-### survival
-
-# final model from analysis only has body size anyway, so was prepared in section "analyze: survival", above.
-# it is named mod.Surv
-# repeated here for ease of use
-# this is the exact same model as used in IPM_simple
-mod.Surv <- glm(Surv ~ z
-                , family = binomial
-                , data = dat
-)
-
-
-
-### growth
-
-## model w/ body size * touch
-dat.growth <- dat[is.na(dat$z1) == F, ]
-
-mod.Grow_st <- lm(z1 ~ z * touch_pct
-                  , data = dat.growth
-                  
-)
-
-# # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-
-# z.growth <- dat.growth$z
-# vfix <- varFixed(~(1/z.growth))
-
-
-
-### reproduction
-# s(z)*Pb(z)*b(z)*Pr*C0(z')
-
-## probability of reproduction Pb(z)
-# use ch 2 field regressions, see ch2>expt2.4.1_field-reproduction_bodyweights_20181106.R, but here using the version that you created for use in ch 3 (see 'load data and packages' section, above)
-# here using the model that includes size + touch (no intxn effect)
-reprodyn.1b
-# note that this model's coefficients are for VOLUME, not operc length. need to convert in IPM before use:
-# # predict volume (v) from operc length (z), using regression from ch3_operctovol_20190102.R
-# dat$v <- dat$z * 131.18 - 152.52
-
-
-## fecundity b(z)
-# offspring: # embryos = 0.147 * (operculum length in mm^2.74). Based on Strathmann et al. 1981 Oecologia (see Schubart thesis pg. 20 and email w/ Strathmann)
-# operculum length multiplied by 10 to make it mm
-# 0.147 * (10 * z)^2.74
-
-## probability recruitment Pr
-# unknown constant, set in "IPM_st: general parameters"
-
-## recruit size distribution
-# intercpet only; recruit size not dependent on parent size
-# recruit size has Gaussian distribution w/ constant mean
-mod.Rcsz <- lm(z ~ 1 
-               , data = rec
-)
-
-## recruit touch distribution
-# don't need a regression; just use beta distribution as determined above
-
-
-# ---- IPM size touch - med crowd, adult only: prepare parameter estimates ----
-
-# IPM book pg. 23-24 (regressions), 48 (ceiling)
-
-m.par_st <- c(
-  surv = coef(mod.Surv)
-  , grow = coef(mod.Grow_st)
-  , grow.sd = summary(mod.Grow_st)$sigma
-  , rcsz = coef(mod.Rcsz)
-  , rcsz.sd = summary(mod.Rcsz)$sigma
-  , rcst = coef(betafit_t)
-  , p.r = p.r.est
-  , repr = coef(reprodyn.1b)
-  #, U1 = U1
-)
-
-names(m.par_st) <- c(
-  'surv.int'
-  , 'surv.z'
-  , 'grow.int'
-  , 'grow.z'
-  , 'grow.t'
-  , 'grow.zt'
-  , 'grow.sd'
-  , 'rcsz.int'
-  , 'rcsz.sd'
-  , 'rcst.s1'
-  , 'rcst.s2'
-  , 'p.r'
-  , 'repr.int' # model is for volume, NOT operc length
-  , 'repr.t' # model is for volume, NOT operc length
-  , 'repr.v' # v here b/c it's volume, NOT operc length
-  #, 'U1'
-)
-
-
-# ---- IPM size touch - med crowd, adult only: define kernel components ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aMrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aMrU: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -4403,7 +4035,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - med crowd, adult only: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aMrU: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -4461,7 +4093,7 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - med crowd, adult only: perturbation analysis ----
+# ---- IPM size touch - aMrU: perturbation analysis ----
 
 ### Compute elasticity matrix 
 repro.val_aMrU <- matrix(v, mz, mt)
@@ -4564,7 +4196,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - med crowd, adult only: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aMrU: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -4684,132 +4316,8 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - uniform crowd, adult only: general parameters ----
-
-### ceiling 
-# Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
-Uz1 = 6
-# Ut1 refers to upper limit of touch t, beyond withich vital rates are the same as Ut1
-Ut1 = 0.8
-
-### number of 'bins' for iteration matrix
-nBigMatrix_z <- 500
-nBigMatrix_t <- 50
-
-### Probability of recruitment, Pr
-# a) IPM book pg. 23. Can estimate by dividing number of recruits by total larval production. A problem with this is that I didn't survey every adult barnacle. But I'm assuming closed population and other assumptions anyway, so just go ahead and do it.
-# b) can also adjust as needed to achieve desired lambda? Ken Sebens style
-
-# a) 
-# estimate total larval production
-total_larval_est <- sum( 0.147 * (10 * dat$z[dat$Surv == 1])^2.74 )
-# total number of recruits
-total_rec <- mean(totrec$number_of_recruits) # mean total number of recruits for RT3
-
-# calculate and set Pr
-p.r.est <- total_rec / total_larval_est
-
-# ---- IPM size touch - uniform crowd, adult only: prepare regression models ----
-
-### survival
-
-# final model from analysis only has body size anyway, so was prepared in section "analyze: survival", above.
-# it is named mod.Surv
-# repeated here for ease of use
-# this is the exact same model as used in IPM_simple
-mod.Surv <- glm(Surv ~ z
-                , family = binomial
-                , data = dat
-)
-
-
-
-### growth
-
-## model w/ body size * touch
-dat.growth <- dat[is.na(dat$z1) == F, ]
-
-mod.Grow_st <- lm(z1 ~ z * touch_pct
-                  , data = dat.growth
-                  
-)
-
-# # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-
-# z.growth <- dat.growth$z
-# vfix <- varFixed(~(1/z.growth))
-
-
-
-### reproduction
-# s(z)*Pb(z)*b(z)*Pr*C0(z')
-
-## probability of reproduction Pb(z)
-# use ch 2 field regressions, see ch2>expt2.4.1_field-reproduction_bodyweights_20181106.R, but here using the version that you created for use in ch 3 (see 'load data and packages' section, above)
-# here using the model that includes size + touch (no intxn effect)
-reprodyn.1b
-# note that this model's coefficients are for VOLUME, not operc length. need to convert in IPM before use:
-# # predict volume (v) from operc length (z), using regression from ch3_operctovol_20190102.R
-# dat$v <- dat$z * 131.18 - 152.52
-
-
-## fecundity b(z)
-# offspring: # embryos = 0.147 * (operculum length in mm^2.74). Based on Strathmann et al. 1981 Oecologia (see Schubart thesis pg. 20 and email w/ Strathmann)
-# operculum length multiplied by 10 to make it mm
-# 0.147 * (10 * z)^2.74
-
-## probability recruitment Pr
-# unknown constant, set in "IPM_st: general parameters"
-
-## recruit size distribution
-# intercpet only; recruit size not dependent on parent size
-# recruit size has Gaussian distribution w/ constant mean
-mod.Rcsz <- lm(z ~ 1 
-               , data = rec
-)
-
-## recruit touch distribution
-# don't need a regression; just use beta distribution as determined above
-
-
-# ---- IPM size touch - uniform crowd, adult only: prepare parameter estimates ----
-
-# IPM book pg. 23-24 (regressions), 48 (ceiling)
-
-m.par_st <- c(
-  surv = coef(mod.Surv)
-  , grow = coef(mod.Grow_st)
-  , grow.sd = summary(mod.Grow_st)$sigma
-  , rcsz = coef(mod.Rcsz)
-  , rcsz.sd = summary(mod.Rcsz)$sigma
-  , rcst = coef(betafit_t)
-  , p.r = p.r.est
-  , repr = coef(reprodyn.1b)
-  #, U1 = U1
-)
-
-names(m.par_st) <- c(
-  'surv.int'
-  , 'surv.z'
-  , 'grow.int'
-  , 'grow.z'
-  , 'grow.t'
-  , 'grow.zt'
-  , 'grow.sd'
-  , 'rcsz.int'
-  , 'rcsz.sd'
-  , 'rcst.s1'
-  , 'rcst.s2'
-  , 'p.r'
-  , 'repr.int' # model is for volume, NOT operc length
-  , 'repr.t' # model is for volume, NOT operc length
-  , 'repr.v' # v here b/c it's volume, NOT operc length
-  #, 'U1'
-)
-
-
-# ---- IPM size touch - uniform crowd, adult only: define kernel components ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aUrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aUrU: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -4959,7 +4467,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - uniform crowd, adult only: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aUrU: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -5017,7 +4525,7 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - uniform crowd, adult only: perturbation analysis ----
+# ---- IPM size touch - aUrU: perturbation analysis ----
 
 ### Compute elasticity matrix 
 repro.val_aUrU <- matrix(v, mz, mt)
@@ -5120,7 +4628,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - uniform crowd, adult only: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aUrU: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -5240,132 +4748,8 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - low crowd, adult and recruit: general parameters ----
-
-### ceiling 
-# Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
-Uz1 = 6
-# Ut1 refers to upper limit of touch t, beyond withich vital rates are the same as Ut1
-Ut1 = 0.8
-
-### number of 'bins' for iteration matrix
-nBigMatrix_z <- 500
-nBigMatrix_t <- 50
-
-### Probability of recruitment, Pr
-# a) IPM book pg. 23. Can estimate by dividing number of recruits by total larval production. A problem with this is that I didn't survey every adult barnacle. But I'm assuming closed population and other assumptions anyway, so just go ahead and do it.
-# b) can also adjust as needed to achieve desired lambda? Ken Sebens style
-
-# a) 
-# estimate total larval production
-total_larval_est <- sum( 0.147 * (10 * dat$z[dat$Surv == 1])^2.74 )
-# total number of recruits
-total_rec <- mean(totrec$number_of_recruits) # mean total number of recruits for RT3
-
-# calculate and set Pr
-p.r.est <- total_rec / total_larval_est
-
-# ---- IPM size touch - low crowd, adult and recruit: prepare regression models ----
-
-### survival
-
-# final model from analysis only has body size anyway, so was prepared in section "analyze: survival", above.
-# it is named mod.Surv
-# repeated here for ease of use
-# this is the exact same model as used in IPM_simple
-mod.Surv <- glm(Surv ~ z
-                , family = binomial
-                , data = dat
-)
-
-
-
-### growth
-
-## model w/ body size * touch
-dat.growth <- dat[is.na(dat$z1) == F, ]
-
-mod.Grow_st <- lm(z1 ~ z * touch_pct
-                  , data = dat.growth
-                  
-)
-
-# # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-
-# z.growth <- dat.growth$z
-# vfix <- varFixed(~(1/z.growth))
-
-
-
-### reproduction
-# s(z)*Pb(z)*b(z)*Pr*C0(z')
-
-## probability of reproduction Pb(z)
-# use ch 2 field regressions, see ch2>expt2.4.1_field-reproduction_bodyweights_20181106.R, but here using the version that you created for use in ch 3 (see 'load data and packages' section, above)
-# here using the model that includes size + touch (no intxn effect)
-reprodyn.1b
-# note that this model's coefficients are for VOLUME, not operc length. need to convert in IPM before use:
-# # predict volume (v) from operc length (z), using regression from ch3_operctovol_20190102.R
-# dat$v <- dat$z * 131.18 - 152.52
-
-
-## fecundity b(z)
-# offspring: # embryos = 0.147 * (operculum length in mm^2.74). Based on Strathmann et al. 1981 Oecologia (see Schubart thesis pg. 20 and email w/ Strathmann)
-# operculum length multiplied by 10 to make it mm
-# 0.147 * (10 * z)^2.74
-
-## probability recruitment Pr
-# unknown constant, set in "IPM_st: general parameters"
-
-## recruit size distribution
-# intercpet only; recruit size not dependent on parent size
-# recruit size has Gaussian distribution w/ constant mean
-mod.Rcsz <- lm(z ~ 1 
-               , data = rec
-)
-
-## recruit touch distribution
-# don't need a regression; just use beta distribution as determined above
-
-
-# ---- IPM size touch - low crowd, adult and recruit: prepare parameter estimates ----
-
-# IPM book pg. 23-24 (regressions), 48 (ceiling)
-
-m.par_st <- c(
-  surv = coef(mod.Surv)
-  , grow = coef(mod.Grow_st)
-  , grow.sd = summary(mod.Grow_st)$sigma
-  , rcsz = coef(mod.Rcsz)
-  , rcsz.sd = summary(mod.Rcsz)$sigma
-  , rcst = coef(betafit_t)
-  , p.r = p.r.est
-  , repr = coef(reprodyn.1b)
-  #, U1 = U1
-)
-
-names(m.par_st) <- c(
-  'surv.int'
-  , 'surv.z'
-  , 'grow.int'
-  , 'grow.z'
-  , 'grow.t'
-  , 'grow.zt'
-  , 'grow.sd'
-  , 'rcsz.int'
-  , 'rcsz.sd'
-  , 'rcst.s1'
-  , 'rcst.s2'
-  , 'p.r'
-  , 'repr.int' # model is for volume, NOT operc length
-  , 'repr.t' # model is for volume, NOT operc length
-  , 'repr.v' # v here b/c it's volume, NOT operc length
-  #, 'U1'
-)
-
-
-# ---- IPM size touch - low crowd, adult and recruit: define kernel components ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aLrL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aLrL: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -5515,7 +4899,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - low crowd, adult and recruit: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aLrL: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -5573,7 +4957,7 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - low crowd, adult and recruit: perturbation analysis ----
+# ---- IPM size touch - aLrL: perturbation analysis ----
 
 ### Compute elasticity matrix 
 repro.val_aLrL <- matrix(v, mz, mt)
@@ -5676,7 +5060,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - low crowd, adult and recruit: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aLrL: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -5796,132 +5180,440 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - high crowd, adult and recruit: general parameters ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aLrH ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aLrH: define kernel components ----
 
-### ceiling 
-# Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
-Uz1 = 6
-# Ut1 refers to upper limit of touch t, beyond withich vital rates are the same as Ut1
-Ut1 = 0.8
+# IPM book pg. 24-25
 
-### number of 'bins' for iteration matrix
-nBigMatrix_z <- 500
-nBigMatrix_t <- 50
+### survival: s(z)
 
-### Probability of recruitment, Pr
-# a) IPM book pg. 23. Can estimate by dividing number of recruits by total larval production. A problem with this is that I didn't survey every adult barnacle. But I'm assuming closed population and other assumptions anyway, so just go ahead and do it.
-# b) can also adjust as needed to achieve desired lambda? Ken Sebens style
+s_z_st <- function(z, m.par_st){
+  
+  ## linear predictor
+  
+  # below size ceiling
+  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
+  # above size ceiling
+  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
+  
+  # impose ceiling and backtransform from logit
+  p <- ifelse(z <= Uz1
+              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
+              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
+  )
+  
+  ## output
+  return( unname(p) )
+  
+  # ## back transform from logit
+  # p <- 1/(1+exp(-linear.p))
+}
 
-# a) 
-# estimate total larval production
-total_larval_est <- sum( 0.147 * (10 * dat$z[dat$Surv == 1])^2.74 )
-# total number of recruits
-total_rec <- mean(totrec$number_of_recruits) # mean total number of recruits for RT3
+### growth: G(z', z, t)
 
-# calculate and set Pr
-p.r.est <- total_rec / total_larval_est
+G_z1zt_st <- function(z1, z, t, m.par_st){
+  
+  ## based on growth regression coefficients, define mu and sigma of growth PDF
+  # below size ceiling
+  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
+  # above size ceiling
+  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
+  
+  sig <- m.par_st['grow.sd']
+  
+  ## calculate growth PDF
+  # have to loop b/c it's a PDF, not a probability
+  p.den.grow <- c()
+  for(q in 1:length(z1)){
+    p.den.grow[q] <- ifelse(z <= Uz1
+                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
+                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
+    )
+  }
+  
+  ## output
+  return(p.den.grow)
+  
+}
+### touch dynamics: T(t', t)
 
-# ---- IPM size touch - high crowd, adult and recruit: prepare regression models ----
+T_t1t_st <- function(t1, t, m.par_st){
+  
+  p.den.touch <- dbeta(t1
+                       , shape1 = 2
+                       , shape2 = 50
+  )
+  
+  ## output
+  return(p.den.touch)
+}
 
-### survival
+### prob reproduce: p_bz
 
-# final model from analysis only has body size anyway, so was prepared in section "analyze: survival", above.
-# it is named mod.Surv
-# repeated here for ease of use
-# this is the exact same model as used in IPM_simple
-mod.Surv <- glm(Surv ~ z
-                , family = binomial
-                , data = dat
+p_bz_st <- function(z, t, m.par_st){
+  ### convert z to v
+  v <- ifelse(z <= Uz1
+              , z * 131.18 - 152.52 # below ceiling
+              , Uz1 * 131.18 - 152.52 # above ceiling
+  )
+  
+  # linear predictor
+  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+  
+  # back transform from logit
+  p <- 1/(1+exp(-linear.p))
+  
+  # output
+  return( unname(p) )
+}
+
+
+### fecundity: b_z
+
+b_z <- function(z){
+  # from Strathmann
+  
+  p.bz <- ifelse(z <= Uz1
+                 , 0.147 * (10 * z)^2.74
+                 , 0.147 * (10 * Uz1)^2.74
+  )
+  
+  return(p.bz)
+}
+
+### recruit size dist: C_0(z')
+
+C_0z1 <- function(z1, m.par_st){
+  mu <- m.par_st['rcsz.int']
+  sig <- m.par_st['rcsz.sd']
+  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
+  return(p.den.rcsz)
+}
+
+### recruit touch dist: C_0(t')
+
+C_0t1 <- function(t1, m.par_st){
+  
+  p.den.rcst <- dbeta(t1 # recruits start with low crowd
+                      , shape1 = 50
+                      , shape2 = 2
+  )
+  
+  # shp1 <- m.par_st['rcst.s1']
+  # shp2 <- m.par_st['rcst.s2']
+  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
+  
+  
+  return(p.den.rcst)
+}
+
+
+### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
+
+P_z1z <- function(z1, z, t1, t, m.par_st){
+  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
+  )
+}
+
+### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
+
+F_z1z <- function(z1, z, t1, t, m.par_st){
+  return(
+    unname(
+      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
+    )
+  )
+}
+
+
+### define K kernel
+k_st <- function(z1, t1,  z, t, m.par_st){
+  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
+}
+
+# ---- *slow, ~ 2 min* IPM size touch - aLrH: numerical implementation ----
+
+# following IPM book pg. 162-164 and SizeQualityExample.R
+
+### compute meshpoints
+mz <- 100 # number of size mesh points 
+mt <- 50  # number of touch mesh points
+Lz <- 0.1 # size lower bound
+Uz<- 10  # size upper bound
+Lt <- 0 # touch lower bound
+Ut <- 1 # touch upper bound
+hz <- (Uz-Lz)/mz # size mesh point breaks
+yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+ht <- (Ut-Lt)/mt # touch mesh point breaks
+yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+
+### compute 4D kernel and 2D iteration matrix
+
+
+
+# Function eta to put kernel values in their proper place in A
+eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+
+# matrix whose (i,j) entry is eta(ij)
+Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+
+# code modified from IPM book, Ch 6, SizeQualityExample.R
+A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+for(i in 1:mz){
+  for(j in 1:mt){
+    for(k in 1:mt){
+      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+      A[Eta[,k],Eta[i,j]]=kvals
+      Kvals[,k,i,j]=kvals
+      
+    }}
+  cat(i,"\n");
+}
+A<-hz*ht*A
+
+# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
+# 
+# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
+# 
+# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
+# dim(A) <- c(mz * mt, mz * mt)
+# A <- hz*ht*A
+
+### calculate Lambda, w, and v
+out <- domEig(A) # returns lambda and a vector proportional to w
+out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
+lam.stable <- out$lambda
+lam.stable.t <- out2$lambda
+w <- Re(matrix(out$w, mz, mt))
+w <- w/(hz*ht*sum(w))
+v <- Re(matrix(out2$w, mz, mt))
+v <- v/sum(v) 
+
+# ---- IPM size touch - aLrH: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aLrH <- matrix(v, mz, mt)
+stable.state_aLrH <- matrix(w, mz, mt) 
+stable.state_aLrH.vector <- apply(stable.state_aLrH, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aLrH*repro.val_aLrH)
+sens <- outer(repro.val_aLrH,stable.state_aLrH)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aLrH.vector/sum(stable.state_aLrH.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
 )
 
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aLrH.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
 
 
-### growth
 
-## model w/ body size * touch
-dat.growth <- dat[is.na(dat$z1) == F, ]
 
-mod.Grow_st <- lm(z1 ~ z * touch_pct
-                  , data = dat.growth
-                  
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aLrH
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aLrH
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
 )
 
-# # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-
-# z.growth <- dat.growth$z
-# vfix <- varFixed(~(1/z.growth))
-
-
-
-### reproduction
-# s(z)*Pb(z)*b(z)*Pr*C0(z')
-
-## probability of reproduction Pb(z)
-# use ch 2 field regressions, see ch2>expt2.4.1_field-reproduction_bodyweights_20181106.R, but here using the version that you created for use in ch 3 (see 'load data and packages' section, above)
-# here using the model that includes size + touch (no intxn effect)
-reprodyn.1b
-# note that this model's coefficients are for VOLUME, not operc length. need to convert in IPM before use:
-# # predict volume (v) from operc length (z), using regression from ch3_operctovol_20190102.R
-# dat$v <- dat$z * 131.18 - 152.52
-
-
-## fecundity b(z)
-# offspring: # embryos = 0.147 * (operculum length in mm^2.74). Based on Strathmann et al. 1981 Oecologia (see Schubart thesis pg. 20 and email w/ Strathmann)
-# operculum length multiplied by 10 to make it mm
-# 0.147 * (10 * z)^2.74
-
-## probability recruitment Pr
-# unknown constant, set in "IPM_st: general parameters"
-
-## recruit size distribution
-# intercpet only; recruit size not dependent on parent size
-# recruit size has Gaussian distribution w/ constant mean
-mod.Rcsz <- lm(z ~ 1 
-               , data = rec
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aLrH
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aLrH
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
 )
 
-## recruit touch distribution
-# don't need a regression; just use beta distribution as determined above
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
 
-
-# ---- IPM size touch - high crowd, adult and recruit: prepare parameter estimates ----
-
-# IPM book pg. 23-24 (regressions), 48 (ceiling)
-
-m.par_st <- c(
-  surv = coef(mod.Surv)
-  , grow = coef(mod.Grow_st)
-  , grow.sd = summary(mod.Grow_st)$sigma
-  , rcsz = coef(mod.Rcsz)
-  , rcsz.sd = summary(mod.Rcsz)$sigma
-  , rcst = coef(betafit_t)
-  , p.r = p.r.est
-  , repr = coef(reprodyn.1b)
-  #, U1 = U1
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
 )
 
-names(m.par_st) <- c(
-  'surv.int'
-  , 'surv.z'
-  , 'grow.int'
-  , 'grow.z'
-  , 'grow.t'
-  , 'grow.zt'
-  , 'grow.sd'
-  , 'rcsz.int'
-  , 'rcsz.sd'
-  , 'rcst.s1'
-  , 'rcst.s2'
-  , 'p.r'
-  , 'repr.int' # model is for volume, NOT operc length
-  , 'repr.t' # model is for volume, NOT operc length
-  , 'repr.v' # v here b/c it's volume, NOT operc length
-  #, 'U1'
-)
-
-
-# ---- IPM size touch - high crowd, adult and recruit: define kernel components ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aLrH: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aHrH ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aHrH: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -6071,7 +5763,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - high crowd, adult and recruit: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aHrH: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -6129,7 +5821,7 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - high crowd, adult and recruit: perturbation analysis ----
+# ---- IPM size touch - aHrH: perturbation analysis ----
 
 ### Compute elasticity matrix 
 repro.val_aHrH <- matrix(v, mz, mt)
@@ -6232,7 +5924,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - high crowd, adult and recruit: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aHrH: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -6352,132 +6044,440 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - med crowd, adult and recruit: general parameters ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aHrL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aHrL: define kernel components ----
 
-### ceiling 
-# Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
-Uz1 = 6
-# Ut1 refers to upper limit of touch t, beyond withich vital rates are the same as Ut1
-Ut1 = 0.8
+# IPM book pg. 24-25
 
-### number of 'bins' for iteration matrix
-nBigMatrix_z <- 500
-nBigMatrix_t <- 50
+### survival: s(z)
 
-### Probability of recruitment, Pr
-# a) IPM book pg. 23. Can estimate by dividing number of recruits by total larval production. A problem with this is that I didn't survey every adult barnacle. But I'm assuming closed population and other assumptions anyway, so just go ahead and do it.
-# b) can also adjust as needed to achieve desired lambda? Ken Sebens style
+s_z_st <- function(z, m.par_st){
+  
+  ## linear predictor
+  
+  # below size ceiling
+  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
+  # above size ceiling
+  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
+  
+  # impose ceiling and backtransform from logit
+  p <- ifelse(z <= Uz1
+              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
+              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
+  )
+  
+  ## output
+  return( unname(p) )
+  
+  # ## back transform from logit
+  # p <- 1/(1+exp(-linear.p))
+}
 
-# a) 
-# estimate total larval production
-total_larval_est <- sum( 0.147 * (10 * dat$z[dat$Surv == 1])^2.74 )
-# total number of recruits
-total_rec <- mean(totrec$number_of_recruits) # mean total number of recruits for RT3
+### growth: G(z', z, t)
 
-# calculate and set Pr
-p.r.est <- total_rec / total_larval_est
+G_z1zt_st <- function(z1, z, t, m.par_st){
+  
+  ## based on growth regression coefficients, define mu and sigma of growth PDF
+  # below size ceiling
+  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
+  # above size ceiling
+  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
+  
+  sig <- m.par_st['grow.sd']
+  
+  ## calculate growth PDF
+  # have to loop b/c it's a PDF, not a probability
+  p.den.grow <- c()
+  for(q in 1:length(z1)){
+    p.den.grow[q] <- ifelse(z <= Uz1
+                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
+                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
+    )
+  }
+  
+  ## output
+  return(p.den.grow)
+  
+}
+### touch dynamics: T(t', t)
 
-# ---- IPM size touch - med crowd, adult and recruit: prepare regression models ----
+T_t1t_st <- function(t1, t, m.par_st){
+  
+  p.den.touch <- dbeta(t1
+                       , shape1 = 50
+                       , shape2 = 2
+  )
+  
+  ## output
+  return(p.den.touch)
+}
 
-### survival
+### prob reproduce: p_bz
 
-# final model from analysis only has body size anyway, so was prepared in section "analyze: survival", above.
-# it is named mod.Surv
-# repeated here for ease of use
-# this is the exact same model as used in IPM_simple
-mod.Surv <- glm(Surv ~ z
-                , family = binomial
-                , data = dat
+p_bz_st <- function(z, t, m.par_st){
+  ### convert z to v
+  v <- ifelse(z <= Uz1
+              , z * 131.18 - 152.52 # below ceiling
+              , Uz1 * 131.18 - 152.52 # above ceiling
+  )
+  
+  # linear predictor
+  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+  
+  # back transform from logit
+  p <- 1/(1+exp(-linear.p))
+  
+  # output
+  return( unname(p) )
+}
+
+
+### fecundity: b_z
+
+b_z <- function(z){
+  # from Strathmann
+  
+  p.bz <- ifelse(z <= Uz1
+                 , 0.147 * (10 * z)^2.74
+                 , 0.147 * (10 * Uz1)^2.74
+  )
+  
+  return(p.bz)
+}
+
+### recruit size dist: C_0(z')
+
+C_0z1 <- function(z1, m.par_st){
+  mu <- m.par_st['rcsz.int']
+  sig <- m.par_st['rcsz.sd']
+  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
+  return(p.den.rcsz)
+}
+
+### recruit touch dist: C_0(t')
+
+C_0t1 <- function(t1, m.par_st){
+  
+  p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
+                      , shape1 = 2
+                      , shape2 = 50
+  )
+  
+  # shp1 <- m.par_st['rcst.s1']
+  # shp2 <- m.par_st['rcst.s2']
+  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
+  
+  
+  return(p.den.rcst)
+}
+
+
+### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
+
+P_z1z <- function(z1, z, t1, t, m.par_st){
+  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
+  )
+}
+
+### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
+
+F_z1z <- function(z1, z, t1, t, m.par_st){
+  return(
+    unname(
+      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
+    )
+  )
+}
+
+
+### define K kernel
+k_st <- function(z1, t1,  z, t, m.par_st){
+  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
+}
+
+# ---- *slow, ~ 2 min* IPM size touch - aHrL: numerical implementation ----
+
+# following IPM book pg. 162-164 and SizeQualityExample.R
+
+### compute meshpoints
+mz <- 100 # number of size mesh points 
+mt <- 50  # number of touch mesh points
+Lz <- 0.1 # size lower bound
+Uz<- 10  # size upper bound
+Lt <- 0 # touch lower bound
+Ut <- 1 # touch upper bound
+hz <- (Uz-Lz)/mz # size mesh point breaks
+yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+ht <- (Ut-Lt)/mt # touch mesh point breaks
+yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+
+### compute 4D kernel and 2D iteration matrix
+
+
+
+# Function eta to put kernel values in their proper place in A
+eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+
+# matrix whose (i,j) entry is eta(ij)
+Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+
+# code modified from IPM book, Ch 6, SizeQualityExample.R
+A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+for(i in 1:mz){
+  for(j in 1:mt){
+    for(k in 1:mt){
+      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+      A[Eta[,k],Eta[i,j]]=kvals
+      Kvals[,k,i,j]=kvals
+      
+    }}
+  cat(i,"\n");
+}
+A<-hz*ht*A
+
+# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
+# 
+# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
+# 
+# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
+# dim(A) <- c(mz * mt, mz * mt)
+# A <- hz*ht*A
+
+### calculate Lambda, w, and v
+out <- domEig(A) # returns lambda and a vector proportional to w
+out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
+lam.stable <- out$lambda
+lam.stable.t <- out2$lambda
+w <- Re(matrix(out$w, mz, mt))
+w <- w/(hz*ht*sum(w))
+v <- Re(matrix(out2$w, mz, mt))
+v <- v/sum(v) 
+
+# ---- IPM size touch - aHrL: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aHrL <- matrix(v, mz, mt)
+stable.state_aHrL <- matrix(w, mz, mt) 
+stable.state_aHrL.vector <- apply(stable.state_aHrL, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aHrL*repro.val_aHrL)
+sens <- outer(repro.val_aHrL,stable.state_aHrL)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aHrL.vector/sum(stable.state_aHrL.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
 )
 
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aHrL.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
 
 
-### growth
 
-## model w/ body size * touch
-dat.growth <- dat[is.na(dat$z1) == F, ]
 
-mod.Grow_st <- lm(z1 ~ z * touch_pct
-                  , data = dat.growth
-                  
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aHrL
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aHrL
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
 )
 
-# # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-
-# z.growth <- dat.growth$z
-# vfix <- varFixed(~(1/z.growth))
-
-
-
-### reproduction
-# s(z)*Pb(z)*b(z)*Pr*C0(z')
-
-## probability of reproduction Pb(z)
-# use ch 2 field regressions, see ch2>expt2.4.1_field-reproduction_bodyweights_20181106.R, but here using the version that you created for use in ch 3 (see 'load data and packages' section, above)
-# here using the model that includes size + touch (no intxn effect)
-reprodyn.1b
-# note that this model's coefficients are for VOLUME, not operc length. need to convert in IPM before use:
-# # predict volume (v) from operc length (z), using regression from ch3_operctovol_20190102.R
-# dat$v <- dat$z * 131.18 - 152.52
-
-
-## fecundity b(z)
-# offspring: # embryos = 0.147 * (operculum length in mm^2.74). Based on Strathmann et al. 1981 Oecologia (see Schubart thesis pg. 20 and email w/ Strathmann)
-# operculum length multiplied by 10 to make it mm
-# 0.147 * (10 * z)^2.74
-
-## probability recruitment Pr
-# unknown constant, set in "IPM_st: general parameters"
-
-## recruit size distribution
-# intercpet only; recruit size not dependent on parent size
-# recruit size has Gaussian distribution w/ constant mean
-mod.Rcsz <- lm(z ~ 1 
-               , data = rec
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aHrL
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aHrL
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
 )
 
-## recruit touch distribution
-# don't need a regression; just use beta distribution as determined above
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
 
-
-# ---- IPM size touch - med crowd, adult and recruit: prepare parameter estimates ----
-
-# IPM book pg. 23-24 (regressions), 48 (ceiling)
-
-m.par_st <- c(
-  surv = coef(mod.Surv)
-  , grow = coef(mod.Grow_st)
-  , grow.sd = summary(mod.Grow_st)$sigma
-  , rcsz = coef(mod.Rcsz)
-  , rcsz.sd = summary(mod.Rcsz)$sigma
-  , rcst = coef(betafit_t)
-  , p.r = p.r.est
-  , repr = coef(reprodyn.1b)
-  #, U1 = U1
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
 )
 
-names(m.par_st) <- c(
-  'surv.int'
-  , 'surv.z'
-  , 'grow.int'
-  , 'grow.z'
-  , 'grow.t'
-  , 'grow.zt'
-  , 'grow.sd'
-  , 'rcsz.int'
-  , 'rcsz.sd'
-  , 'rcst.s1'
-  , 'rcst.s2'
-  , 'p.r'
-  , 'repr.int' # model is for volume, NOT operc length
-  , 'repr.t' # model is for volume, NOT operc length
-  , 'repr.v' # v here b/c it's volume, NOT operc length
-  #, 'U1'
-)
-
-
-# ---- IPM size touch - med crowd, adult and recruit: define kernel components ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aHrL: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aMrM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aMrM: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -6627,7 +6627,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - med crowd, adult and recruit: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aMrM: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -6685,7 +6685,7 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - med crowd, adult and recruit: perturbation analysis ----
+# ---- IPM size touch - aMrM: perturbation analysis ----
 
 ### Compute elasticity matrix 
 repro.val_aMrM <- matrix(v, mz, mt)
@@ -6788,7 +6788,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - med crowd, adult and recruit: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aMrM: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -6908,132 +6908,8 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - low crowd, recruit only: general parameters ----
-
-### ceiling 
-# Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
-Uz1 = 6
-# Ut1 refers to upper limit of touch t, beyond withich vital rates are the same as Ut1
-Ut1 = 0.8
-
-### number of 'bins' for iteration matrix
-nBigMatrix_z <- 500
-nBigMatrix_t <- 50
-
-### Probability of recruitment, Pr
-# a) IPM book pg. 23. Can estimate by dividing number of recruits by total larval production. A problem with this is that I didn't survey every adult barnacle. But I'm assuming closed population and other assumptions anyway, so just go ahead and do it.
-# b) can also adjust as needed to achieve desired lambda? Ken Sebens style
-
-# a) 
-# estimate total larval production
-total_larval_est <- sum( 0.147 * (10 * dat$z[dat$Surv == 1])^2.74 )
-# total number of recruits
-total_rec <- mean(totrec$number_of_recruits) # mean total number of recruits for RT3
-
-# calculate and set Pr
-p.r.est <- total_rec / total_larval_est
-
-# ---- IPM size touch - low crowd, recruit only: prepare regression models ----
-
-### survival
-
-# final model from analysis only has body size anyway, so was prepared in section "analyze: survival", above.
-# it is named mod.Surv
-# repeated here for ease of use
-# this is the exact same model as used in IPM_simple
-mod.Surv <- glm(Surv ~ z
-                , family = binomial
-                , data = dat
-)
-
-
-
-### growth
-
-## model w/ body size * touch
-dat.growth <- dat[is.na(dat$z1) == F, ]
-
-mod.Grow_st <- lm(z1 ~ z * touch_pct
-                  , data = dat.growth
-                  
-)
-
-# # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-
-# z.growth <- dat.growth$z
-# vfix <- varFixed(~(1/z.growth))
-
-
-
-### reproduction
-# s(z)*Pb(z)*b(z)*Pr*C0(z')
-
-## probability of reproduction Pb(z)
-# use ch 2 field regressions, see ch2>expt2.4.1_field-reproduction_bodyweights_20181106.R, but here using the version that you created for use in ch 3 (see 'load data and packages' section, above)
-# here using the model that includes size + touch (no intxn effect)
-reprodyn.1b
-# note that this model's coefficients are for VOLUME, not operc length. need to convert in IPM before use:
-# # predict volume (v) from operc length (z), using regression from ch3_operctovol_20190102.R
-# dat$v <- dat$z * 131.18 - 152.52
-
-
-## fecundity b(z)
-# offspring: # embryos = 0.147 * (operculum length in mm^2.74). Based on Strathmann et al. 1981 Oecologia (see Schubart thesis pg. 20 and email w/ Strathmann)
-# operculum length multiplied by 10 to make it mm
-# 0.147 * (10 * z)^2.74
-
-## probability recruitment Pr
-# unknown constant, set in "IPM_st: general parameters"
-
-## recruit size distribution
-# intercpet only; recruit size not dependent on parent size
-# recruit size has Gaussian distribution w/ constant mean
-mod.Rcsz <- lm(z ~ 1 
-               , data = rec
-)
-
-## recruit touch distribution
-# don't need a regression; just use beta distribution as determined above
-
-
-# ---- IPM size touch - low crowd, recruit only: prepare parameter estimates ----
-
-# IPM book pg. 23-24 (regressions), 48 (ceiling)
-
-m.par_st <- c(
-  surv = coef(mod.Surv)
-  , grow = coef(mod.Grow_st)
-  , grow.sd = summary(mod.Grow_st)$sigma
-  , rcsz = coef(mod.Rcsz)
-  , rcsz.sd = summary(mod.Rcsz)$sigma
-  , rcst = coef(betafit_t)
-  , p.r = p.r.est
-  , repr = coef(reprodyn.1b)
-  #, U1 = U1
-)
-
-names(m.par_st) <- c(
-  'surv.int'
-  , 'surv.z'
-  , 'grow.int'
-  , 'grow.z'
-  , 'grow.t'
-  , 'grow.zt'
-  , 'grow.sd'
-  , 'rcsz.int'
-  , 'rcsz.sd'
-  , 'rcst.s1'
-  , 'rcst.s2'
-  , 'p.r'
-  , 'repr.int' # model is for volume, NOT operc length
-  , 'repr.t' # model is for volume, NOT operc length
-  , 'repr.v' # v here b/c it's volume, NOT operc length
-  #, 'U1'
-)
-
-
-# ---- IPM size touch - low crowd, recruit only: define kernel components ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aUrL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aUrL: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -7183,7 +7059,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - low crowd, recruit only: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aUrL: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -7241,7 +7117,7 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - low crowd, recruit only: perturbation analysis ----
+# ---- IPM size touch - aUrL: perturbation analysis ----
 
 ### Compute elasticity matrix 
 repro.val_aUrL <- matrix(v, mz, mt)
@@ -7344,7 +7220,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - low crowd, recruit only: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aUrL: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -7464,132 +7340,8 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - high crowd, recruit only: general parameters ----
-
-### ceiling 
-# Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
-Uz1 = 6
-# Ut1 refers to upper limit of touch t, beyond withich vital rates are the same as Ut1
-Ut1 = 0.8
-
-### number of 'bins' for iteration matrix
-nBigMatrix_z <- 500
-nBigMatrix_t <- 50
-
-### Probability of recruitment, Pr
-# a) IPM book pg. 23. Can estimate by dividing number of recruits by total larval production. A problem with this is that I didn't survey every adult barnacle. But I'm assuming closed population and other assumptions anyway, so just go ahead and do it.
-# b) can also adjust as needed to achieve desired lambda? Ken Sebens style
-
-# a) 
-# estimate total larval production
-total_larval_est <- sum( 0.147 * (10 * dat$z[dat$Surv == 1])^2.74 )
-# total number of recruits
-total_rec <- mean(totrec$number_of_recruits) # mean total number of recruits for RT3
-
-# calculate and set Pr
-p.r.est <- total_rec / total_larval_est
-
-# ---- IPM size touch - high crowd, recruit only: prepare regression models ----
-
-### survival
-
-# final model from analysis only has body size anyway, so was prepared in section "analyze: survival", above.
-# it is named mod.Surv
-# repeated here for ease of use
-# this is the exact same model as used in IPM_simple
-mod.Surv <- glm(Surv ~ z
-                , family = binomial
-                , data = dat
-)
-
-
-
-### growth
-
-## model w/ body size * touch
-dat.growth <- dat[is.na(dat$z1) == F, ]
-
-mod.Grow_st <- lm(z1 ~ z * touch_pct
-                  , data = dat.growth
-                  
-)
-
-# # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-
-# z.growth <- dat.growth$z
-# vfix <- varFixed(~(1/z.growth))
-
-
-
-### reproduction
-# s(z)*Pb(z)*b(z)*Pr*C0(z')
-
-## probability of reproduction Pb(z)
-# use ch 2 field regressions, see ch2>expt2.4.1_field-reproduction_bodyweights_20181106.R, but here using the version that you created for use in ch 3 (see 'load data and packages' section, above)
-# here using the model that includes size + touch (no intxn effect)
-reprodyn.1b
-# note that this model's coefficients are for VOLUME, not operc length. need to convert in IPM before use:
-# # predict volume (v) from operc length (z), using regression from ch3_operctovol_20190102.R
-# dat$v <- dat$z * 131.18 - 152.52
-
-
-## fecundity b(z)
-# offspring: # embryos = 0.147 * (operculum length in mm^2.74). Based on Strathmann et al. 1981 Oecologia (see Schubart thesis pg. 20 and email w/ Strathmann)
-# operculum length multiplied by 10 to make it mm
-# 0.147 * (10 * z)^2.74
-
-## probability recruitment Pr
-# unknown constant, set in "IPM_st: general parameters"
-
-## recruit size distribution
-# intercpet only; recruit size not dependent on parent size
-# recruit size has Gaussian distribution w/ constant mean
-mod.Rcsz <- lm(z ~ 1 
-               , data = rec
-)
-
-## recruit touch distribution
-# don't need a regression; just use beta distribution as determined above
-
-
-# ---- IPM size touch - high crowd, recruit only: prepare parameter estimates ----
-
-# IPM book pg. 23-24 (regressions), 48 (ceiling)
-
-m.par_st <- c(
-  surv = coef(mod.Surv)
-  , grow = coef(mod.Grow_st)
-  , grow.sd = summary(mod.Grow_st)$sigma
-  , rcsz = coef(mod.Rcsz)
-  , rcsz.sd = summary(mod.Rcsz)$sigma
-  , rcst = coef(betafit_t)
-  , p.r = p.r.est
-  , repr = coef(reprodyn.1b)
-  #, U1 = U1
-)
-
-names(m.par_st) <- c(
-  'surv.int'
-  , 'surv.z'
-  , 'grow.int'
-  , 'grow.z'
-  , 'grow.t'
-  , 'grow.zt'
-  , 'grow.sd'
-  , 'rcsz.int'
-  , 'rcsz.sd'
-  , 'rcst.s1'
-  , 'rcst.s2'
-  , 'p.r'
-  , 'repr.int' # model is for volume, NOT operc length
-  , 'repr.t' # model is for volume, NOT operc length
-  , 'repr.v' # v here b/c it's volume, NOT operc length
-  #, 'U1'
-)
-
-
-# ---- IPM size touch - high crowd, recruit only: define kernel components ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aUrH ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aUrH: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -7739,7 +7491,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - high crowd, recruit only: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aUrH: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -7797,7 +7549,7 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - high crowd, recruit only: perturbation analysis ----
+# ---- IPM size touch - aUrH: perturbation analysis ----
 
 ### Compute elasticity matrix 
 repro.val_aUrH <- matrix(v, mz, mt)
@@ -7900,7 +7652,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - high crowd, recruit only: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aUrH: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -8020,132 +7772,8 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - med crowd, recruit only: general parameters ----
-
-### ceiling 
-# Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
-Uz1 = 6
-# Ut1 refers to upper limit of touch t, beyond withich vital rates are the same as Ut1
-Ut1 = 0.8
-
-### number of 'bins' for iteration matrix
-nBigMatrix_z <- 500
-nBigMatrix_t <- 50
-
-### Probability of recruitment, Pr
-# a) IPM book pg. 23. Can estimate by dividing number of recruits by total larval production. A problem with this is that I didn't survey every adult barnacle. But I'm assuming closed population and other assumptions anyway, so just go ahead and do it.
-# b) can also adjust as needed to achieve desired lambda? Ken Sebens style
-
-# a) 
-# estimate total larval production
-total_larval_est <- sum( 0.147 * (10 * dat$z[dat$Surv == 1])^2.74 )
-# total number of recruits
-total_rec <- mean(totrec$number_of_recruits) # mean total number of recruits for RT3
-
-# calculate and set Pr
-p.r.est <- total_rec / total_larval_est
-
-# ---- IPM size touch - med crowd, recruit only: prepare regression models ----
-
-### survival
-
-# final model from analysis only has body size anyway, so was prepared in section "analyze: survival", above.
-# it is named mod.Surv
-# repeated here for ease of use
-# this is the exact same model as used in IPM_simple
-mod.Surv <- glm(Surv ~ z
-                , family = binomial
-                , data = dat
-)
-
-
-
-### growth
-
-## model w/ body size * touch
-dat.growth <- dat[is.na(dat$z1) == F, ]
-
-mod.Grow_st <- lm(z1 ~ z * touch_pct
-                  , data = dat.growth
-                  
-)
-
-# # code for modeling non-constant variance repeated here for ease of use. see "analyze: growth"
-
-# z.growth <- dat.growth$z
-# vfix <- varFixed(~(1/z.growth))
-
-
-
-### reproduction
-# s(z)*Pb(z)*b(z)*Pr*C0(z')
-
-## probability of reproduction Pb(z)
-# use ch 2 field regressions, see ch2>expt2.4.1_field-reproduction_bodyweights_20181106.R, but here using the version that you created for use in ch 3 (see 'load data and packages' section, above)
-# here using the model that includes size + touch (no intxn effect)
-reprodyn.1b
-# note that this model's coefficients are for VOLUME, not operc length. need to convert in IPM before use:
-# # predict volume (v) from operc length (z), using regression from ch3_operctovol_20190102.R
-# dat$v <- dat$z * 131.18 - 152.52
-
-
-## fecundity b(z)
-# offspring: # embryos = 0.147 * (operculum length in mm^2.74). Based on Strathmann et al. 1981 Oecologia (see Schubart thesis pg. 20 and email w/ Strathmann)
-# operculum length multiplied by 10 to make it mm
-# 0.147 * (10 * z)^2.74
-
-## probability recruitment Pr
-# unknown constant, set in "IPM_st: general parameters"
-
-## recruit size distribution
-# intercpet only; recruit size not dependent on parent size
-# recruit size has Gaussian distribution w/ constant mean
-mod.Rcsz <- lm(z ~ 1 
-               , data = rec
-)
-
-## recruit touch distribution
-# don't need a regression; just use beta distribution as determined above
-
-
-# ---- IPM size touch - med crowd, recruit only: prepare parameter estimates ----
-
-# IPM book pg. 23-24 (regressions), 48 (ceiling)
-
-m.par_st <- c(
-  surv = coef(mod.Surv)
-  , grow = coef(mod.Grow_st)
-  , grow.sd = summary(mod.Grow_st)$sigma
-  , rcsz = coef(mod.Rcsz)
-  , rcsz.sd = summary(mod.Rcsz)$sigma
-  , rcst = coef(betafit_t)
-  , p.r = p.r.est
-  , repr = coef(reprodyn.1b)
-  #, U1 = U1
-)
-
-names(m.par_st) <- c(
-  'surv.int'
-  , 'surv.z'
-  , 'grow.int'
-  , 'grow.z'
-  , 'grow.t'
-  , 'grow.zt'
-  , 'grow.sd'
-  , 'rcsz.int'
-  , 'rcsz.sd'
-  , 'rcst.s1'
-  , 'rcst.s2'
-  , 'p.r'
-  , 'repr.int' # model is for volume, NOT operc length
-  , 'repr.t' # model is for volume, NOT operc length
-  , 'repr.v' # v here b/c it's volume, NOT operc length
-  #, 'U1'
-)
-
-
-# ---- IPM size touch - med crowd, recruit only: define kernel components ----
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aUrM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aUrM: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -8295,7 +7923,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - med crowd, recruit only: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aUrM: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -8353,7 +7981,7 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - high crowd, recruit only: perturbation analysis ----
+# ---- IPM size touch - aUrM: perturbation analysis ----
 
 ### Compute elasticity matrix 
 repro.val_aUrM <- matrix(v, mz, mt)
@@ -8456,7 +8084,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - med crowd, recruit only: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aUrM: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
