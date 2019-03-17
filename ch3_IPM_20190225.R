@@ -1315,85 +1315,6 @@ plot(stable.z.dist_simple/diff(meshpts_simple)[1]  ~ meshpts_simple
 
 
 
-# ---- *slow, ~ 7 min* IPM simple: lambda CI  ----
-
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-
-  mod.Grow <- lm(z1 ~ z
-                  , data = boot.data.growth
-                  
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_simple <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_simple)
-    , grow.sd = summary(mod.Grow_simple)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1_sizeonly)
-    #, U1 = U1
-  )
-  
-  names(m.par_simple) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOt operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # also see IPM: general parameters
-  
-  IPM.est <- mk_K(nBigMatrix, m.par_simple, 0.1, 10)
-  
-  lam.boot <- Re(eigen(IPM.est$K, only.values = TRUE)$values[1])
-  cat(lam.boot, "\n")
-  
-  return(lam.boot)
-}
-### do the bootstrap (code takes ~ 7 min to run)
-#starttime <- Sys.time()
-boot.out <- boot(data = dat, statistic = boot.lam, simple = TRUE,
-                 R = 1000)
-#endtime <- Sys.time()
-
-boot.ci(boot.out, type = c('norm', 'basic', 'perc'))
-
-
 # ---- IPM simple: perturbation analysis: set up ----
 
 # see IPM book section 4.4, starting on pg. 96
@@ -1894,6 +1815,86 @@ legend('topright'
        , bty = 'n'
 )
 
+# ---- *slow, ~ 7 min* IPM simple: lambda CI  ----
+
+# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+
+# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+
+### function to compute lambda from a bootstrapped data set in format required by library(boot)
+boot.lam <- function(dataset, sample.index) {
+  
+  ### extract the data used to make this fit
+  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+  
+  ### fit the functions
+  
+  ## survival
+  mod.Surv <- glm(Surv ~ z
+                  , family = binomial
+                  , data = boot.data
+  )
+  
+  ## growth
+  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+  
+  mod.Grow <- lm(z1 ~ z
+                 , data = boot.data.growth
+                 
+  )
+  
+  ## recruit size distribution
+  mod.Rcsz <- lm(z ~ 1 
+                 , data = rec
+  )
+  
+  ### Store the estimated parameters
+  
+  m.par_simple <- c(
+    surv = coef(mod.Surv)
+    , grow = coef(mod.Grow_simple)
+    , grow.sd = summary(mod.Grow_simple)$sigma
+    , rcsz = coef(mod.Rcsz)
+    , rcsz.sd = summary(mod.Rcsz)$sigma
+    , p.r = p.r.est
+    , repr = coef(reprodyn.1_sizeonly)
+    #, U1 = U1
+  )
+  
+  names(m.par_simple) <- c(
+    'surv.int'
+    , 'surv.z'
+    , 'grow.int'
+    , 'grow.z'
+    , 'grow.sd'
+    , 'rcsz.int'
+    , 'rcsz.sd'
+    , 'p.r'
+    , 'repr.int' # model is for volume, NOt operc length
+    , 'repr.v' # v here b/c it's volume, NOT operc length
+    #, 'U1'
+  )
+  
+  ### implement IPM and calculate lambda
+  # also see IPM: general parameters
+  
+  IPM.est <- mk_K(nBigMatrix, m.par_simple, 0.1, 10)
+  
+  lam.boot <- Re(eigen(IPM.est$K, only.values = TRUE)$values[1])
+  cat(lam.boot, "\n")
+  
+  return(lam.boot)
+}
+### do the bootstrap (code takes ~ 7 min to run)
+#starttime <- Sys.time()
+boot.out <- boot(data = dat, statistic = boot.lam, simple = TRUE,
+                 R = 1000)
+#endtime <- Sys.time()
+
+boot.ci(boot.out, type = c('norm', 'basic', 'perc'))
+
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size only: general parameters ----
 
@@ -2227,6 +2228,109 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size only: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val <- matrix(v, mz, mt)
+stable.state <- matrix(w, mz, mt) 
+stable.state.vector <- apply(stable.state, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state*repro.val)
+sens <- outer(repro.val,stable.state)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state.vector/sum(stable.state.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size only: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -2346,108 +2450,6 @@ endtime <- Sys.time()
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size only: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val <- matrix(v, mz, mt)
-stable.state <- matrix(w, mz, mt) 
-stable.state.vector <- apply(stable.state, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state*repro.val)
-sens <- outer(repro.val,stable.state)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state.vector/sum(stable.state.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - field: general parameters ----
@@ -2782,6 +2784,118 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch - field: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aFrU <- matrix(v, mz, mt)
+stable.state_aFrU <- matrix(w, mz, mt) 
+stable.state_aFrU.vector <- apply(stable.state_aFrU, 1, sum)
+
+v.dot.w <- sum(hz*ht*stable.state_aFrU*repro.val_aFrU)
+sens <- outer(repro.val_aFrU,stable.state_aFrU)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aFrU.vector/sum(stable.state_aFrU.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Probability"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aFrU.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+# # stable size dist with small ones excluded
+# plot(yz
+#      , (stable.state_aFrU.vector/sum(stable.state_aFrU.vector))*10
+#      , xlab = "Operculum length, mm"
+#      , ylab = "Probability"
+#      , type = "l"
+#      , ylim = c(0, 0.1)
+#      , xlim = c(2.5, 10)
+# )
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aFrU
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aFrU
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aFrU
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aFrU
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size touch - field: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -2895,123 +3009,12 @@ boot.lam.st <- function(dataset, sample.index) {
 ### do the bootstrap (code takes ~ X min to run)
 starttime <- Sys.time()
 boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                 R = 1000)
+                    R = 1000)
 endtime <- Sys.time()
 
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size touch - field: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aFrU <- matrix(v, mz, mt)
-stable.state_aFrU <- matrix(w, mz, mt) 
-stable.state_aFrU.vector <- apply(stable.state_aFrU, 1, sum)
-
-v.dot.w <- sum(hz*ht*stable.state_aFrU*repro.val_aFrU)
-sens <- outer(repro.val_aFrU,stable.state_aFrU)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aFrU.vector/sum(stable.state_aFrU.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Probability"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aFrU.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-# # stable size dist with small ones excluded
-# plot(yz
-#      , (stable.state_aFrU.vector/sum(stable.state_aFrU.vector))*10
-#      , xlab = "Operculum length, mm"
-#      , ylab = "Probability"
-#      , type = "l"
-#      , ylim = c(0, 0.1)
-#      , xlim = c(2.5, 10)
-# )
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aFrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aFrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aFrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aFrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - low crowd, adult only: general parameters ----
@@ -3346,6 +3349,109 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch - low crowd, adult only: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aLrU <- matrix(v, mz, mt)
+stable.state_aLrU <- matrix(w, mz, mt) 
+stable.state_aLrU.vector <- apply(stable.state_aLrU, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aLrU*repro.val_aLrU)
+sens <- outer(repro.val_aLrU,stable.state_aLrU)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aLrU.vector/sum(stable.state_aLrU.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aLrU.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aLrU
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aLrU
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aLrU
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aLrU
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size touch - low crowd, adult only: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -3465,108 +3571,6 @@ endtime <- Sys.time()
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size touch - low crowd, adult only: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aLrU <- matrix(v, mz, mt)
-stable.state_aLrU <- matrix(w, mz, mt) 
-stable.state_aLrU.vector <- apply(stable.state_aLrU, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aLrU*repro.val_aLrU)
-sens <- outer(repro.val_aLrU,stable.state_aLrU)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aLrU.vector/sum(stable.state_aLrU.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aLrU.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aLrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aLrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aLrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aLrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - high crowd, adult only: general parameters ----
@@ -3901,6 +3905,109 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch - high crowd, adult only: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aHrU <- matrix(v, mz, mt)
+stable.state_aHrU <- matrix(w, mz, mt) 
+stable.state_aHrU.vector <- apply(stable.state_aHrU, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aHrU*repro.val_aHrU)
+sens <- outer(repro.val_aHrU,stable.state_aHrU)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aHrU.vector/sum(stable.state_aHrU.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aHrU.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aHrU
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aHrU
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aHrU
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aHrU
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size touch - high crowd, adult only: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -4020,108 +4127,6 @@ endtime <- Sys.time()
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size touch - high crowd, adult only: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aHrU <- matrix(v, mz, mt)
-stable.state_aHrU <- matrix(w, mz, mt) 
-stable.state_aHrU.vector <- apply(stable.state_aHrU, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aHrU*repro.val_aHrU)
-sens <- outer(repro.val_aHrU,stable.state_aHrU)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aHrU.vector/sum(stable.state_aHrU.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aHrU.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aHrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aHrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aHrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aHrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - med crowd, adult only: general parameters ----
@@ -4456,6 +4461,109 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch - med crowd, adult only: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aMrU <- matrix(v, mz, mt)
+stable.state_aMrU <- matrix(w, mz, mt) 
+stable.state_aMrU.vector <- apply(stable.state_aMrU, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aMrU*repro.val_aMrU)
+sens <- outer(repro.val_aMrU,stable.state_aMrU)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aMrU.vector/sum(stable.state_aMrU.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aMrU.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aMrU
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aMrU
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aMrU
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aMrU
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size touch - med crowd, adult only: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -4575,108 +4683,6 @@ endtime <- Sys.time()
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size touch - med crowd, adult only: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aMrU <- matrix(v, mz, mt)
-stable.state_aMrU <- matrix(w, mz, mt) 
-stable.state_aMrU.vector <- apply(stable.state_aMrU, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aMrU*repro.val_aMrU)
-sens <- outer(repro.val_aMrU,stable.state_aMrU)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aMrU.vector/sum(stable.state_aMrU.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aMrU.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aMrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aMrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aMrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aMrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - uniform crowd, adult only: general parameters ----
@@ -5011,6 +5017,109 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch - uniform crowd, adult only: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aUrU <- matrix(v, mz, mt)
+stable.state_aUrU <- matrix(w, mz, mt) 
+stable.state_aUrU.vector <- apply(stable.state_aUrU, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aUrU*repro.val_aUrU)
+sens <- outer(repro.val_aUrU,stable.state_aUrU)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aUrU.vector/sum(stable.state_aUrU.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aUrU.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aUrU
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aUrU
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aUrU
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aUrU
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size touch - uniform crowd, adult only: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -5130,108 +5239,6 @@ endtime <- Sys.time()
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size touch - uniform crowd, adult only: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aUrU <- matrix(v, mz, mt)
-stable.state_aUrU <- matrix(w, mz, mt) 
-stable.state_aUrU.vector <- apply(stable.state_aUrU, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aUrU*repro.val_aUrU)
-sens <- outer(repro.val_aUrU,stable.state_aUrU)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aUrU.vector/sum(stable.state_aUrU.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aUrU.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aUrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aUrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aUrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aUrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - low crowd, adult and recruit: general parameters ----
@@ -5566,6 +5573,109 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch - low crowd, adult and recruit: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aLrL <- matrix(v, mz, mt)
+stable.state_aLrL <- matrix(w, mz, mt) 
+stable.state_aLrL.vector <- apply(stable.state_aLrL, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aLrL*repro.val_aLrL)
+sens <- outer(repro.val_aLrL,stable.state_aLrL)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aLrL.vector/sum(stable.state_aLrL.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aLrL.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aLrL
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aLrL
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aLrL
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aLrL
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size touch - low crowd, adult and recruit: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -5685,108 +5795,6 @@ endtime <- Sys.time()
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size touch - low crowd, adult and recruit: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aLrL <- matrix(v, mz, mt)
-stable.state_aLrL <- matrix(w, mz, mt) 
-stable.state_aLrL.vector <- apply(stable.state_aLrL, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aLrL*repro.val_aLrL)
-sens <- outer(repro.val_aLrL,stable.state_aLrL)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aLrL.vector/sum(stable.state_aLrL.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aLrL.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aLrL
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aLrL
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aLrL
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aLrL
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - high crowd, adult and recruit: general parameters ----
@@ -6121,6 +6129,109 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch - high crowd, adult and recruit: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aHrH <- matrix(v, mz, mt)
+stable.state_aHrH <- matrix(w, mz, mt) 
+stable.state_aHrH.vector <- apply(stable.state_aHrH, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aHrH*repro.val_aHrH)
+sens <- outer(repro.val_aHrH,stable.state_aHrH)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aHrH.vector/sum(stable.state_aHrH.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aHrH.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aHrH
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aHrH
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aHrH
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aHrH
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size touch - high crowd, adult and recruit: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -6240,108 +6351,6 @@ endtime <- Sys.time()
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size touch - high crowd, adult and recruit: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aHrH <- matrix(v, mz, mt)
-stable.state_aHrH <- matrix(w, mz, mt) 
-stable.state_aHrH.vector <- apply(stable.state_aHrH, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aHrH*repro.val_aHrH)
-sens <- outer(repro.val_aHrH,stable.state_aHrH)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aHrH.vector/sum(stable.state_aHrH.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aHrH.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aHrH
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aHrH
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aHrH
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aHrH
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - med crowd, adult and recruit: general parameters ----
@@ -6676,6 +6685,109 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch - med crowd, adult and recruit: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aMrM <- matrix(v, mz, mt)
+stable.state_aMrM <- matrix(w, mz, mt) 
+stable.state_aMrM.vector <- apply(stable.state_aMrM, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aMrM*repro.val_aMrM)
+sens <- outer(repro.val_aMrM,stable.state_aMrM)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aMrM.vector/sum(stable.state_aMrM.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aMrM.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aMrM
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aMrM
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aMrM
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aMrM
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size touch - med crowd, adult and recruit: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -6795,108 +6907,6 @@ endtime <- Sys.time()
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size touch - med crowd, adult and recruit: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aMrM <- matrix(v, mz, mt)
-stable.state_aMrM <- matrix(w, mz, mt) 
-stable.state_aMrM.vector <- apply(stable.state_aMrM, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aMrM*repro.val_aMrM)
-sens <- outer(repro.val_aMrM,stable.state_aMrM)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aMrM.vector/sum(stable.state_aMrM.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aMrM.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aMrM
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aMrM
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aMrM
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aMrM
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - low crowd, recruit only: general parameters ----
@@ -7231,6 +7241,109 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch - low crowd, recruit only: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aUrL <- matrix(v, mz, mt)
+stable.state_aUrL <- matrix(w, mz, mt) 
+stable.state_aUrL.vector <- apply(stable.state_aUrL, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aUrL*repro.val_aUrL)
+sens <- outer(repro.val_aUrL,stable.state_aUrL)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aUrL.vector/sum(stable.state_aUrL.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aUrL.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aUrL
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aUrL
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aUrL
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aUrL
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size touch - low crowd, recruit only: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -7350,108 +7463,6 @@ endtime <- Sys.time()
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size touch - low crowd, recruit only: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aUrL <- matrix(v, mz, mt)
-stable.state_aUrL <- matrix(w, mz, mt) 
-stable.state_aUrL.vector <- apply(stable.state_aUrL, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aUrL*repro.val_aUrL)
-sens <- outer(repro.val_aUrL,stable.state_aUrL)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aUrL.vector/sum(stable.state_aUrL.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aUrL.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aUrL
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aUrL
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aUrL
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aUrL
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - high crowd, recruit only: general parameters ----
@@ -7786,6 +7797,109 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch - high crowd, recruit only: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aUrH <- matrix(v, mz, mt)
+stable.state_aUrH <- matrix(w, mz, mt) 
+stable.state_aUrH.vector <- apply(stable.state_aUrH, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aUrH*repro.val_aUrH)
+sens <- outer(repro.val_aUrH,stable.state_aUrH)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aUrH.vector/sum(stable.state_aUrH.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aUrH.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aUrH
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aUrH
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aUrH
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aUrH
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size touch - high crowd, recruit only: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -7905,108 +8019,6 @@ endtime <- Sys.time()
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size touch - high crowd, recruit only: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aUrH <- matrix(v, mz, mt)
-stable.state_aUrH <- matrix(w, mz, mt) 
-stable.state_aUrH.vector <- apply(stable.state_aUrH, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aUrH*repro.val_aUrH)
-sens <- outer(repro.val_aUrH,stable.state_aUrH)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aUrH.vector/sum(stable.state_aUrH.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aUrH.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aUrH
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aUrH
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aUrH
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aUrH
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - med crowd, recruit only: general parameters ----
@@ -8341,6 +8353,109 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
+# ---- IPM size touch - high crowd, recruit only: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aUrM <- matrix(v, mz, mt)
+stable.state_aUrM <- matrix(w, mz, mt) 
+stable.state_aUrM.vector <- apply(stable.state_aUrM, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aUrM*repro.val_aUrM)
+sens <- outer(repro.val_aUrM,stable.state_aUrM)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aUrM.vector/sum(stable.state_aUrM.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aUrM.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aUrM
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aUrM
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aUrM
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aUrM
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
 # ---- *slow, ~ 34 hrs* IPM size touch - med crowd, recruit only: lambda CI ----
 # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 
@@ -8460,105 +8575,3 @@ endtime <- Sys.time()
 boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 
 
-# ---- IPM size touch - high crowd, recruit only: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aUrM <- matrix(v, mz, mt)
-stable.state_aUrM <- matrix(w, mz, mt) 
-stable.state_aUrM.vector <- apply(stable.state_aUrM, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aUrM*repro.val_aUrM)
-sens <- outer(repro.val_aUrM,stable.state_aUrM)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aUrM.vector/sum(stable.state_aUrM.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aUrM.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aUrM
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aUrM
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aUrM
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aUrM
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
