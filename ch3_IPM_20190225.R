@@ -2925,7 +2925,7 @@ cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n")
 plot(yz
      , (stable.state.vector/sum(stable.state.vector))*10
      , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
+     , ylab = "Probability"
      , type = "l"
      , ylim = c(0, 1)
 )
@@ -2938,7 +2938,15 @@ plot(yz
 #      , type = "l"
 # )
 
-
+# # stable size dist with small ones excluded
+# plot(yz
+#      , (stable.state.vector/sum(stable.state.vector))*10
+#      , xlab = "Operculum length, mm"
+#      , ylab = "Probability"
+#      , type = "l"
+#      , ylim = c(0, 0.1)
+#      , xlim = c(2.5, 10)
+# )
 
 
 ## stable size and crowding distribution
