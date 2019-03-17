@@ -1815,86 +1815,86 @@ legend('topright'
        , bty = 'n'
 )
 
-# ---- *slow, ~ 7 min* IPM simple: lambda CI  ----
-
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  mod.Grow <- lm(z1 ~ z
-                 , data = boot.data.growth
-                 
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_simple <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_simple)
-    , grow.sd = summary(mod.Grow_simple)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1_sizeonly)
-    #, U1 = U1
-  )
-  
-  names(m.par_simple) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOt operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # also see IPM: general parameters
-  
-  IPM.est <- mk_K(nBigMatrix, m.par_simple, 0.1, 10)
-  
-  lam.boot <- Re(eigen(IPM.est$K, only.values = TRUE)$values[1])
-  cat(lam.boot, "\n")
-  
-  return(lam.boot)
-}
-### do the bootstrap (code takes ~ 7 min to run)
-#starttime <- Sys.time()
-boot.out <- boot(data = dat, statistic = boot.lam, simple = TRUE,
-                 R = 1000)
-#endtime <- Sys.time()
-
-boot.ci(boot.out, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 7 min* IPM simple: lambda CI  ----
+# 
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   mod.Grow <- lm(z1 ~ z
+#                  , data = boot.data.growth
+#                  
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_simple <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_simple)
+#     , grow.sd = summary(mod.Grow_simple)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1_sizeonly)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_simple) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOt operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # also see IPM: general parameters
+#   
+#   IPM.est <- mk_K(nBigMatrix, m.par_simple, 0.1, 10)
+#   
+#   lam.boot <- Re(eigen(IPM.est$K, only.values = TRUE)$values[1])
+#   cat(lam.boot, "\n")
+#   
+#   return(lam.boot)
+# }
+# ### do the bootstrap (code takes ~ 7 min to run)
+# #starttime <- Sys.time()
+# boot.out <- boot(data = dat, statistic = boot.lam, simple = TRUE,
+#                  R = 1000)
+# #endtime <- Sys.time()
+# 
+# boot.ci(boot.out, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size only: general parameters ----
 
@@ -2331,126 +2331,126 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size only: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 34 hrs* IPM size only: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - field: general parameters ----
 
@@ -2896,126 +2896,126 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size touch - field: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 34 hrs* IPM size touch - field: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - low crowd, adult only: general parameters ----
 
@@ -3452,126 +3452,126 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size touch - low crowd, adult only: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 34 hrs* IPM size touch - low crowd, adult only: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - high crowd, adult only: general parameters ----
 
@@ -4008,126 +4008,126 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size touch - high crowd, adult only: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 34 hrs* IPM size touch - high crowd, adult only: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - med crowd, adult only: general parameters ----
 
@@ -4564,126 +4564,126 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size touch - med crowd, adult only: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 34 hrs* IPM size touch - med crowd, adult only: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - uniform crowd, adult only: general parameters ----
 
@@ -5120,126 +5120,126 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size touch - uniform crowd, adult only: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 34 hrs* IPM size touch - uniform crowd, adult only: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - low crowd, adult and recruit: general parameters ----
 
@@ -5676,126 +5676,126 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size touch - low crowd, adult and recruit: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 34 hrs* IPM size touch - low crowd, adult and recruit: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - high crowd, adult and recruit: general parameters ----
 
@@ -6232,126 +6232,126 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size touch - high crowd, adult and recruit: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 34 hrs* IPM size touch - high crowd, adult and recruit: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - med crowd, adult and recruit: general parameters ----
 
@@ -6788,126 +6788,126 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size touch - med crowd, adult and recruit: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 34 hrs* IPM size touch - med crowd, adult and recruit: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - low crowd, recruit only: general parameters ----
 
@@ -7344,126 +7344,126 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size touch - low crowd, recruit only: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 34 hrs* IPM size touch - low crowd, recruit only: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - high crowd, recruit only: general parameters ----
 
@@ -7900,126 +7900,126 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size touch - high crowd, recruit only: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
-
+# # ---- *slow, ~ 34 hrs* IPM size touch - high crowd, recruit only: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - med crowd, recruit only: general parameters ----
 
@@ -8456,122 +8456,122 @@ contour(yz
         , labcex = 0.8
 )
 
-# ---- *slow, ~ 34 hrs* IPM size touch - med crowd, recruit only: lambda CI ----
-# from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-
-# NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-
-### function to compute lambda from a bootstrapped data set in format required by library(boot)
-boot.lam.st <- function(dataset, sample.index) {
-  
-  ### extract the data used to make this fit
-  boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-  
-  ### fit the functions
-  
-  ## survival
-  mod.Surv <- glm(Surv ~ z
-                  , family = binomial
-                  , data = boot.data
-  )
-  
-  ## growth
-  
-  boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-  
-  #z.growth <- boot.data.growth$z
-  mod.Grow_st <- lm(z1 ~ z * touch_pct
-                    , data = boot.data.growth
-                    
-  )
-  
-  ## recruit size distribution
-  mod.Rcsz <- lm(z ~ 1 
-                 , data = rec
-  )
-  
-  ### Store the estimated parameters
-  
-  m.par_st <- c(
-    surv = coef(mod.Surv)
-    , grow = coef(mod.Grow_st)
-    , grow.sd = summary(mod.Grow_st)$sigma
-    , rcsz = coef(mod.Rcsz)
-    , rcsz.sd = summary(mod.Rcsz)$sigma
-    , rcst = coef(betafit_t)
-    , p.r = p.r.est
-    , repr = coef(reprodyn.1b)
-    #, U1 = U1
-  )
-  
-  names(m.par_st) <- c(
-    'surv.int'
-    , 'surv.z'
-    , 'grow.int'
-    , 'grow.z'
-    , 'grow.t'
-    , 'grow.zt'
-    , 'grow.sd'
-    , 'rcsz.int'
-    , 'rcsz.sd'
-    , 'rcst.s1'
-    , 'rcst.s2'
-    , 'p.r'
-    , 'repr.int' # model is for volume, NOT operc length
-    , 'repr.t' # model is for volume, NOT operc length
-    , 'repr.v' # v here b/c it's volume, NOT operc length
-    #, 'U1'
-  )
-  
-  ### implement IPM and calculate lambda
-  # following IPM book pg. 162-164 and SizeQualityExample.R
-  
-  ## compute meshpoints
-  mz <- 100 # number of size mesh points 
-  mt <- 50  # number of touch mesh points
-  Lz <- 0.1 # size lower bound
-  Uz<- 10  # size upper bound
-  Lt <- 0 # touch lower bound
-  Ut <- 1 # touch upper bound
-  hz <- (Uz-Lz)/mz # size mesh point breaks
-  yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-  ht <- (Ut-Lt)/mt # touch mesh point breaks
-  yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-  
-  ## compute 4D kernel and 2D iteration matrix
-  # Function eta to put kernel values in their proper place in A
-  eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-  
-  # matrix whose (i,j) entry is eta(ij)
-  Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-  
-  # code modified from IPM book, Ch 6, SizeQualityExample.R
-  A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-  for(i in 1:mz){
-    for(j in 1:mt){
-      for(k in 1:mt){
-        kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-        A[Eta[,k],Eta[i,j]]=kvals
-        Kvals[,k,i,j]=kvals
-        
-      }}
-    cat(i,"\n");
-  }
-  A<-hz*ht*A
-  
-  out <- domEig(A) # returns lambda and a vector proportional to w
-  lam.boot <- out$lambda
-  cat(lam.boot, "\n")
-  return(lam.boot)
-  
-}
-
-### do the bootstrap (code takes ~ X min to run)
-starttime <- Sys.time()
-boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-                    R = 1000)
-endtime <- Sys.time()
-
-boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-
-
+# # ---- *slow, ~ 34 hrs* IPM size touch - med crowd, recruit only: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
