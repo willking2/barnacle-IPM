@@ -1,3 +1,8 @@
+### Will King
+### Ch 3 - population model for B. glandula, IPM
+
+### need to run models from ch3_IPM_20190225 main file before able to plot these
+
 plot(yz
      , (stable.state_aFrU.vector/sum(stable.state_aFrU.vector))*10
      , xlab = "Operculum length, mm"
