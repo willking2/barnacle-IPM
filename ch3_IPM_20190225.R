@@ -2,7 +2,7 @@
 ### Ch 3 - population model for B. glandula, IPM
 ### data from field survey of barnacles after 1 year (Jun 2017 - May 2018)
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~ Data Prep ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~ Data Prep ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- load data and packages ----
 
 library(lme4)
@@ -481,7 +481,7 @@ lines(crowdy.x
       , col = 'green'
 )
 
-# ~~~~~~~~~~~~~~~~~~~~~~~ Regression analysis ~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~ Regression analysis ~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- analyze: growth ----
 
 ### determine random structure
@@ -968,7 +968,7 @@ mtext('Probability of survival'
 )
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~ IPM simple ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~ IPM simple ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM simple: general parameters ----
 
 ### ceiling 
@@ -1925,7 +1925,7 @@ legend('topright'
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~ IPM size only (= simple) ~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~ IPM size only (= simple) ~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size only: general parameters ----
 
 ### ceiling 
@@ -2482,7 +2482,7 @@ contour(yz
 # 
 # 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ~~~~~~~~~~~~~~~~~~~~~~~ IPM size touch: prep ~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~ IPM size touch: prep ~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch: general parameters ----
 
 ### ceiling 
@@ -2607,449 +2607,7 @@ names(m.par_st) <- c(
 )
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aFrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-
-# ---- IPM size touch - aFrU: define kernel components ----
-
-# IPM book pg. 24-25
-
-### survival: s(z)
-
-s_z_st <- function(z, m.par_st){
-  
-  ## linear predictor
-  
-  # below size ceiling
-  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
-  # above size ceiling
-  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
-  
-  # impose ceiling and backtransform from logit
-  p <- ifelse(z <= Uz1
-              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
-              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
-  )
-  
-  ## output
-  return( unname(p) )
-  
-  # ## back transform from logit
-  # p <- 1/(1+exp(-linear.p))
-}
-
-### growth: G(z', z, t)
-
-G_z1zt_st <- function(z1, z, t, m.par_st){
-  
-  ## based on growth regression coefficients, define mu and sigma of growth PDF
-  # below size ceiling
-  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
-  # above size ceiling
-  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
-  
-  sig <- m.par_st['grow.sd']
-  
-  ## calculate growth PDF
-  # have to loop b/c it's a PDF, not a probability
-  p.den.grow <- c()
-  for(q in 1:length(z1)){
-    p.den.grow[q] <- ifelse(z <= Uz1
-                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
-                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
-    )
-  }
-  
-  ## output
-  return(p.den.grow)
-  
-}
-### touch dynamics: T(t', t)
-
-T_t1t_st <- function(t1, t, m.par_st){
-
-  p.den.touch <- dbeta(t1
-                       , shape1 = m.par_st['rcst.s1']
-                       , shape2 = m.par_st['rcst.s2']
-  )
-
-  ## output
-  return(p.den.touch)
-}
-
-### prob reproduce: p_bz
-
-p_bz_st <- function(z, t, m.par_st){
-  ### convert z to v
-  v <- ifelse(z <= Uz1
-              , z * 131.18 - 152.52 # below ceiling
-              , Uz1 * 131.18 - 152.52 # above ceiling
-  )
-  
-  # linear predictor
-  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
-  
-  # back transform from logit
-  p <- 1/(1+exp(-linear.p))
-  
-  # output
-  return( unname(p) )
-}
-
-
-### fecundity: b_z
-
-b_z <- function(z){
-  # from Strathmann
-  
-  p.bz <- ifelse(z <= Uz1
-                 , 0.147 * (10 * z)^2.74
-                 , 0.147 * (10 * Uz1)^2.74
-  )
-  
-  return(p.bz)
-}
-
-### recruit size dist: C_0(z')
-
-C_0z1 <- function(z1, m.par_st){
-  mu <- m.par_st['rcsz.int']
-  sig <- m.par_st['rcsz.sd']
-  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
-  return(p.den.rcsz)
-}
-
-### recruit touch dist: C_0(t')
-
-C_0t1 <- function(t1, m.par_st){
-  
-  p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
-                      , shape1 = 1
-                      , shape2 = 1
-  )
-  
-  # shp1 <- m.par_st['rcst.s1']
-  # shp2 <- m.par_st['rcst.s2']
-  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
-  
-  
-  return(p.den.rcst)
-}
-
-
-### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
-
-P_z1z <- function(z1, z, t1, t, m.par_st){
-  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
-  )
-}
-
-### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
-
-F_z1z <- function(z1, z, t1, t, m.par_st){
-  return(
-    unname(
-      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
-    )
-  )
-}
-
-
-### define K kernel
-k_st <- function(z1, t1,  z, t, m.par_st){
-  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
-}
-
-# ---- *slow, ~ 2 min* IPM size touch - aFrU: numerical implementation ----
-
-# following IPM book pg. 162-164 and SizeQualityExample.R
-
-### compute meshpoints
-mz <- 100 # number of size mesh points 
-mt <- 50  # number of touch mesh points
-Lz <- 0.1 # size lower bound
-Uz<- 10  # size upper bound
-Lt <- 0 # touch lower bound
-Ut <- 1 # touch upper bound
-hz <- (Uz-Lz)/mz # size mesh point breaks
-yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-ht <- (Ut-Lt)/mt # touch mesh point breaks
-yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-
-### compute 4D kernel and 2D iteration matrix
-
-
-
-# Function eta to put kernel values in their proper place in A
-eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-
-# matrix whose (i,j) entry is eta(ij)
-Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-
-# code modified from IPM book, Ch 6, SizeQualityExample.R
-A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-for(i in 1:mz){
-  for(j in 1:mt){
-    for(k in 1:mt){
-      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-      A[Eta[,k],Eta[i,j]]=kvals
-      Kvals[,k,i,j]=kvals
-
-    }}
-  cat(i,"\n");
-}
-A<-hz*ht*A
-
-# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
-# 
-# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
-# 
-# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
-# dim(A) <- c(mz * mt, mz * mt)
-# A <- hz*ht*A
-
-### calculate Lambda, w, and v
-out <- domEig(A) # returns lambda and a vector proportional to w
-out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
-lam.stable <- out$lambda
-lam.stable.t <- out2$lambda
-w <- Re(matrix(out$w, mz, mt))
-w <- w/(hz*ht*sum(w))
-v <- Re(matrix(out2$w, mz, mt))
-v <- v/sum(v) 
-
-# ---- IPM size touch - aFrU: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aFrU <- matrix(v, mz, mt)
-stable.state_aFrU <- matrix(w, mz, mt) 
-stable.state_aFrU.vector <- apply(stable.state_aFrU, 1, sum)
-
-v.dot.w <- sum(hz*ht*stable.state_aFrU*repro.val_aFrU)
-sens <- outer(repro.val_aFrU,stable.state_aFrU)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aFrU.vector/sum(stable.state_aFrU.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Probability"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aFrU.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-# # stable size dist with small ones excluded
-# plot(yz
-#      , (stable.state_aFrU.vector/sum(stable.state_aFrU.vector))*10
-#      , xlab = "Operculum length, mm"
-#      , ylab = "Probability"
-#      , type = "l"
-#      , ylim = c(0, 0.1)
-#      , xlim = c(2.5, 10)
-# )
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aFrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aFrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aFrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aFrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-# # ---- *slow, ~ 34 hrs* IPM size touch - aFrU: lambda CI ----
-# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-# 
-# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-# 
-# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
-# boot.lam.st <- function(dataset, sample.index) {
-#   
-#   ### extract the data used to make this fit
-#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-#   
-#   ### fit the functions
-#   
-#   ## survival
-#   mod.Surv <- glm(Surv ~ z
-#                   , family = binomial
-#                   , data = boot.data
-#   )
-#   
-#   ## growth
-#   
-#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-#   
-#   #z.growth <- boot.data.growth$z
-#   mod.Grow_st <- lm(z1 ~ z * touch_pct
-#                     , data = boot.data.growth
-#                     
-#   )
-#   
-#   ## recruit size distribution
-#   mod.Rcsz <- lm(z ~ 1 
-#                  , data = rec
-#   )
-#   
-#   ### Store the estimated parameters
-#   
-#   m.par_st <- c(
-#     surv = coef(mod.Surv)
-#     , grow = coef(mod.Grow_st)
-#     , grow.sd = summary(mod.Grow_st)$sigma
-#     , rcsz = coef(mod.Rcsz)
-#     , rcsz.sd = summary(mod.Rcsz)$sigma
-#     , rcst = coef(betafit_t)
-#     , p.r = p.r.est
-#     , repr = coef(reprodyn.1b)
-#     #, U1 = U1
-#   )
-#   
-#   names(m.par_st) <- c(
-#     'surv.int'
-#     , 'surv.z'
-#     , 'grow.int'
-#     , 'grow.z'
-#     , 'grow.t'
-#     , 'grow.zt'
-#     , 'grow.sd'
-#     , 'rcsz.int'
-#     , 'rcsz.sd'
-#     , 'rcst.s1'
-#     , 'rcst.s2'
-#     , 'p.r'
-#     , 'repr.int' # model is for volume, NOT operc length
-#     , 'repr.t' # model is for volume, NOT operc length
-#     , 'repr.v' # v here b/c it's volume, NOT operc length
-#     #, 'U1'
-#   )
-#   
-#   ### implement IPM and calculate lambda
-#   # following IPM book pg. 162-164 and SizeQualityExample.R
-#   
-#   ## compute meshpoints
-#   mz <- 100 # number of size mesh points 
-#   mt <- 50  # number of touch mesh points
-#   Lz <- 0.1 # size lower bound
-#   Uz<- 10  # size upper bound
-#   Lt <- 0 # touch lower bound
-#   Ut <- 1 # touch upper bound
-#   hz <- (Uz-Lz)/mz # size mesh point breaks
-#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-#   ht <- (Ut-Lt)/mt # touch mesh point breaks
-#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-#   
-#   ## compute 4D kernel and 2D iteration matrix
-#   # Function eta to put kernel values in their proper place in A
-#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-#   
-#   # matrix whose (i,j) entry is eta(ij)
-#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-#   
-#   # code modified from IPM book, Ch 6, SizeQualityExample.R
-#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-#   for(i in 1:mz){
-#     for(j in 1:mt){
-#       for(k in 1:mt){
-#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-#         A[Eta[,k],Eta[i,j]]=kvals
-#         Kvals[,k,i,j]=kvals
-#         
-#       }}
-#     cat(i,"\n");
-#   }
-#   A<-hz*ht*A
-#   
-#   out <- domEig(A) # returns lambda and a vector proportional to w
-#   lam.boot <- out$lambda
-#   cat(lam.boot, "\n")
-#   return(lam.boot)
-#   
-# }
-# 
-# ### do the bootstrap (code takes ~ X min to run)
-# starttime <- Sys.time()
-# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-#                     R = 1000)
-# endtime <- Sys.time()
-# 
-# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-# 
-# 
-# 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aFrF ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~ aFrF ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 
 # ---- IPM size touch - aFrF: define kernel components ----
 
@@ -3491,1303 +3049,7 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aLrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - aLrU: define kernel components ----
-
-# IPM book pg. 24-25
-
-### survival: s(z)
-
-s_z_st <- function(z, m.par_st){
-  
-  ## linear predictor
-  
-  # below size ceiling
-  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
-  # above size ceiling
-  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
-  
-  # impose ceiling and backtransform from logit
-  p <- ifelse(z <= Uz1
-              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
-              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
-  )
-  
-  ## output
-  return( unname(p) )
-  
-  # ## back transform from logit
-  # p <- 1/(1+exp(-linear.p))
-}
-
-### growth: G(z', z, t)
-
-G_z1zt_st <- function(z1, z, t, m.par_st){
-  
-  ## based on growth regression coefficients, define mu and sigma of growth PDF
-  # below size ceiling
-  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
-  # above size ceiling
-  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
-  
-  sig <- m.par_st['grow.sd']
-  
-  ## calculate growth PDF
-  # have to loop b/c it's a PDF, not a probability
-  p.den.grow <- c()
-  for(q in 1:length(z1)){
-    p.den.grow[q] <- ifelse(z <= Uz1
-                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
-                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
-    )
-  }
-  
-  ## output
-  return(p.den.grow)
-  
-}
-### touch dynamics: T(t', t)
-
-T_t1t_st <- function(t1, t, m.par_st){
-  
-  p.den.touch <- dbeta(t1
-                       , shape1 = 2
-                       , shape2 = 50
-  )
-  
-  ## output
-  return(p.den.touch)
-}
-
-### prob reproduce: p_bz
-
-p_bz_st <- function(z, t, m.par_st){
-  ### convert z to v
-  v <- ifelse(z <= Uz1
-              , z * 131.18 - 152.52 # below ceiling
-              , Uz1 * 131.18 - 152.52 # above ceiling
-  )
-  
-  # linear predictor
-  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
-  
-  # back transform from logit
-  p <- 1/(1+exp(-linear.p))
-  
-  # output
-  return( unname(p) )
-}
-
-
-### fecundity: b_z
-
-b_z <- function(z){
-  # from Strathmann
-  
-  p.bz <- ifelse(z <= Uz1
-                 , 0.147 * (10 * z)^2.74
-                 , 0.147 * (10 * Uz1)^2.74
-  )
-  
-  return(p.bz)
-}
-
-### recruit size dist: C_0(z')
-
-C_0z1 <- function(z1, m.par_st){
-  mu <- m.par_st['rcsz.int']
-  sig <- m.par_st['rcsz.sd']
-  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
-  return(p.den.rcsz)
-}
-
-### recruit touch dist: C_0(t')
-
-C_0t1 <- function(t1, m.par_st){
-  
-  p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
-                      , shape1 = 1
-                      , shape2 = 1
-  )
-  
-  # shp1 <- m.par_st['rcst.s1']
-  # shp2 <- m.par_st['rcst.s2']
-  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
-  
-  
-  return(p.den.rcst)
-}
-
-
-### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
-
-P_z1z <- function(z1, z, t1, t, m.par_st){
-  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
-  )
-}
-
-### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
-
-F_z1z <- function(z1, z, t1, t, m.par_st){
-  return(
-    unname(
-      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
-    )
-  )
-}
-
-
-### define K kernel
-k_st <- function(z1, t1,  z, t, m.par_st){
-  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
-}
-
-# ---- *slow, ~ 2 min* IPM size touch - aLrU: numerical implementation ----
-
-# following IPM book pg. 162-164 and SizeQualityExample.R
-
-### compute meshpoints
-mz <- 100 # number of size mesh points 
-mt <- 50  # number of touch mesh points
-Lz <- 0.1 # size lower bound
-Uz<- 10  # size upper bound
-Lt <- 0 # touch lower bound
-Ut <- 1 # touch upper bound
-hz <- (Uz-Lz)/mz # size mesh point breaks
-yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-ht <- (Ut-Lt)/mt # touch mesh point breaks
-yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-
-### compute 4D kernel and 2D iteration matrix
-
-
-
-# Function eta to put kernel values in their proper place in A
-eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-
-# matrix whose (i,j) entry is eta(ij)
-Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-
-# code modified from IPM book, Ch 6, SizeQualityExample.R
-A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-for(i in 1:mz){
-  for(j in 1:mt){
-    for(k in 1:mt){
-      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-      A[Eta[,k],Eta[i,j]]=kvals
-      Kvals[,k,i,j]=kvals
-      
-    }}
-  cat(i,"\n");
-}
-A<-hz*ht*A
-
-# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
-# 
-# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
-# 
-# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
-# dim(A) <- c(mz * mt, mz * mt)
-# A <- hz*ht*A
-
-### calculate Lambda, w, and v
-out <- domEig(A) # returns lambda and a vector proportional to w
-out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
-lam.stable <- out$lambda
-lam.stable.t <- out2$lambda
-w <- Re(matrix(out$w, mz, mt))
-w <- w/(hz*ht*sum(w))
-v <- Re(matrix(out2$w, mz, mt))
-v <- v/sum(v) 
-
-# ---- IPM size touch - aLrU: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aLrU <- matrix(v, mz, mt)
-stable.state_aLrU <- matrix(w, mz, mt) 
-stable.state_aLrU.vector <- apply(stable.state_aLrU, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aLrU*repro.val_aLrU)
-sens <- outer(repro.val_aLrU,stable.state_aLrU)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aLrU.vector/sum(stable.state_aLrU.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aLrU.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aLrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aLrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aLrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aLrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-# # ---- *slow, ~ 34 hrs* IPM size touch - aLrU: lambda CI ----
-# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-# 
-# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-# 
-# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
-# boot.lam.st <- function(dataset, sample.index) {
-#   
-#   ### extract the data used to make this fit
-#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-#   
-#   ### fit the functions
-#   
-#   ## survival
-#   mod.Surv <- glm(Surv ~ z
-#                   , family = binomial
-#                   , data = boot.data
-#   )
-#   
-#   ## growth
-#   
-#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-#   
-#   #z.growth <- boot.data.growth$z
-#   mod.Grow_st <- lm(z1 ~ z * touch_pct
-#                     , data = boot.data.growth
-#                     
-#   )
-#   
-#   ## recruit size distribution
-#   mod.Rcsz <- lm(z ~ 1 
-#                  , data = rec
-#   )
-#   
-#   ### Store the estimated parameters
-#   
-#   m.par_st <- c(
-#     surv = coef(mod.Surv)
-#     , grow = coef(mod.Grow_st)
-#     , grow.sd = summary(mod.Grow_st)$sigma
-#     , rcsz = coef(mod.Rcsz)
-#     , rcsz.sd = summary(mod.Rcsz)$sigma
-#     , rcst = coef(betafit_t)
-#     , p.r = p.r.est
-#     , repr = coef(reprodyn.1b)
-#     #, U1 = U1
-#   )
-#   
-#   names(m.par_st) <- c(
-#     'surv.int'
-#     , 'surv.z'
-#     , 'grow.int'
-#     , 'grow.z'
-#     , 'grow.t'
-#     , 'grow.zt'
-#     , 'grow.sd'
-#     , 'rcsz.int'
-#     , 'rcsz.sd'
-#     , 'rcst.s1'
-#     , 'rcst.s2'
-#     , 'p.r'
-#     , 'repr.int' # model is for volume, NOT operc length
-#     , 'repr.t' # model is for volume, NOT operc length
-#     , 'repr.v' # v here b/c it's volume, NOT operc length
-#     #, 'U1'
-#   )
-#   
-#   ### implement IPM and calculate lambda
-#   # following IPM book pg. 162-164 and SizeQualityExample.R
-#   
-#   ## compute meshpoints
-#   mz <- 100 # number of size mesh points 
-#   mt <- 50  # number of touch mesh points
-#   Lz <- 0.1 # size lower bound
-#   Uz<- 10  # size upper bound
-#   Lt <- 0 # touch lower bound
-#   Ut <- 1 # touch upper bound
-#   hz <- (Uz-Lz)/mz # size mesh point breaks
-#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-#   ht <- (Ut-Lt)/mt # touch mesh point breaks
-#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-#   
-#   ## compute 4D kernel and 2D iteration matrix
-#   # Function eta to put kernel values in their proper place in A
-#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-#   
-#   # matrix whose (i,j) entry is eta(ij)
-#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-#   
-#   # code modified from IPM book, Ch 6, SizeQualityExample.R
-#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-#   for(i in 1:mz){
-#     for(j in 1:mt){
-#       for(k in 1:mt){
-#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-#         A[Eta[,k],Eta[i,j]]=kvals
-#         Kvals[,k,i,j]=kvals
-#         
-#       }}
-#     cat(i,"\n");
-#   }
-#   A<-hz*ht*A
-#   
-#   out <- domEig(A) # returns lambda and a vector proportional to w
-#   lam.boot <- out$lambda
-#   cat(lam.boot, "\n")
-#   return(lam.boot)
-#   
-# }
-# 
-# ### do the bootstrap (code takes ~ X min to run)
-# starttime <- Sys.time()
-# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-#                     R = 1000)
-# endtime <- Sys.time()
-# 
-# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-# 
-# 
-# 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aHrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - aHrU: define kernel components ----
-
-# IPM book pg. 24-25
-
-### survival: s(z)
-
-s_z_st <- function(z, m.par_st){
-  
-  ## linear predictor
-  
-  # below size ceiling
-  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
-  # above size ceiling
-  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
-  
-  # impose ceiling and backtransform from logit
-  p <- ifelse(z <= Uz1
-              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
-              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
-  )
-  
-  ## output
-  return( unname(p) )
-  
-  # ## back transform from logit
-  # p <- 1/(1+exp(-linear.p))
-}
-
-### growth: G(z', z, t)
-
-G_z1zt_st <- function(z1, z, t, m.par_st){
-  
-  ## based on growth regression coefficients, define mu and sigma of growth PDF
-  # below size ceiling
-  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
-  # above size ceiling
-  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
-  
-  sig <- m.par_st['grow.sd']
-  
-  ## calculate growth PDF
-  # have to loop b/c it's a PDF, not a probability
-  p.den.grow <- c()
-  for(q in 1:length(z1)){
-    p.den.grow[q] <- ifelse(z <= Uz1
-                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
-                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
-    )
-  }
-  
-  ## output
-  return(p.den.grow)
-  
-}
-### touch dynamics: T(t', t)
-
-T_t1t_st <- function(t1, t, m.par_st){
-  
-  p.den.touch <- dbeta(t1
-                       , shape1 = 50
-                       , shape2 = 2
-  )
-  
-  ## output
-  return(p.den.touch)
-}
-
-### prob reproduce: p_bz
-
-p_bz_st <- function(z, t, m.par_st){
-  ### convert z to v
-  v <- ifelse(z <= Uz1
-              , z * 131.18 - 152.52 # below ceiling
-              , Uz1 * 131.18 - 152.52 # above ceiling
-  )
-  
-  # linear predictor
-  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
-  
-  # back transform from logit
-  p <- 1/(1+exp(-linear.p))
-  
-  # output
-  return( unname(p) )
-}
-
-
-### fecundity: b_z
-
-b_z <- function(z){
-  # from Strathmann
-  
-  p.bz <- ifelse(z <= Uz1
-                 , 0.147 * (10 * z)^2.74
-                 , 0.147 * (10 * Uz1)^2.74
-  )
-  
-  return(p.bz)
-}
-
-### recruit size dist: C_0(z')
-
-C_0z1 <- function(z1, m.par_st){
-  mu <- m.par_st['rcsz.int']
-  sig <- m.par_st['rcsz.sd']
-  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
-  return(p.den.rcsz)
-}
-
-### recruit touch dist: C_0(t')
-
-C_0t1 <- function(t1, m.par_st){
-  
-  p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
-                      , shape1 = 1
-                      , shape2 = 1
-  )
-  
-  # shp1 <- m.par_st['rcst.s1']
-  # shp2 <- m.par_st['rcst.s2']
-  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
-  
-  
-  return(p.den.rcst)
-}
-
-
-### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
-
-P_z1z <- function(z1, z, t1, t, m.par_st){
-  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
-  )
-}
-
-### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
-
-F_z1z <- function(z1, z, t1, t, m.par_st){
-  return(
-    unname(
-      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
-    )
-  )
-}
-
-
-### define K kernel
-k_st <- function(z1, t1,  z, t, m.par_st){
-  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
-}
-
-# ---- *slow, ~ 2 min* IPM size touch - aHrU: numerical implementation ----
-
-# following IPM book pg. 162-164 and SizeQualityExample.R
-
-### compute meshpoints
-mz <- 100 # number of size mesh points 
-mt <- 50  # number of touch mesh points
-Lz <- 0.1 # size lower bound
-Uz<- 10  # size upper bound
-Lt <- 0 # touch lower bound
-Ut <- 1 # touch upper bound
-hz <- (Uz-Lz)/mz # size mesh point breaks
-yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-ht <- (Ut-Lt)/mt # touch mesh point breaks
-yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-
-### compute 4D kernel and 2D iteration matrix
-
-
-
-# Function eta to put kernel values in their proper place in A
-eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-
-# matrix whose (i,j) entry is eta(ij)
-Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-
-# code modified from IPM book, Ch 6, SizeQualityExample.R
-A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-for(i in 1:mz){
-  for(j in 1:mt){
-    for(k in 1:mt){
-      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-      A[Eta[,k],Eta[i,j]]=kvals
-      Kvals[,k,i,j]=kvals
-      
-    }}
-  cat(i,"\n");
-}
-A<-hz*ht*A
-
-# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
-# 
-# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
-# 
-# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
-# dim(A) <- c(mz * mt, mz * mt)
-# A <- hz*ht*A
-
-### calculate Lambda, w, and v
-out <- domEig(A) # returns lambda and a vector proportional to w
-out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
-lam.stable <- out$lambda
-lam.stable.t <- out2$lambda
-w <- Re(matrix(out$w, mz, mt))
-w <- w/(hz*ht*sum(w))
-v <- Re(matrix(out2$w, mz, mt))
-v <- v/sum(v) 
-
-# ---- IPM size touch - aHrU: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aHrU <- matrix(v, mz, mt)
-stable.state_aHrU <- matrix(w, mz, mt) 
-stable.state_aHrU.vector <- apply(stable.state_aHrU, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aHrU*repro.val_aHrU)
-sens <- outer(repro.val_aHrU,stable.state_aHrU)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aHrU.vector/sum(stable.state_aHrU.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aHrU.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aHrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aHrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aHrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aHrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-# # ---- *slow, ~ 34 hrs* IPM size touch - aHrU: lambda CI ----
-# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-# 
-# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-# 
-# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
-# boot.lam.st <- function(dataset, sample.index) {
-#   
-#   ### extract the data used to make this fit
-#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-#   
-#   ### fit the functions
-#   
-#   ## survival
-#   mod.Surv <- glm(Surv ~ z
-#                   , family = binomial
-#                   , data = boot.data
-#   )
-#   
-#   ## growth
-#   
-#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-#   
-#   #z.growth <- boot.data.growth$z
-#   mod.Grow_st <- lm(z1 ~ z * touch_pct
-#                     , data = boot.data.growth
-#                     
-#   )
-#   
-#   ## recruit size distribution
-#   mod.Rcsz <- lm(z ~ 1 
-#                  , data = rec
-#   )
-#   
-#   ### Store the estimated parameters
-#   
-#   m.par_st <- c(
-#     surv = coef(mod.Surv)
-#     , grow = coef(mod.Grow_st)
-#     , grow.sd = summary(mod.Grow_st)$sigma
-#     , rcsz = coef(mod.Rcsz)
-#     , rcsz.sd = summary(mod.Rcsz)$sigma
-#     , rcst = coef(betafit_t)
-#     , p.r = p.r.est
-#     , repr = coef(reprodyn.1b)
-#     #, U1 = U1
-#   )
-#   
-#   names(m.par_st) <- c(
-#     'surv.int'
-#     , 'surv.z'
-#     , 'grow.int'
-#     , 'grow.z'
-#     , 'grow.t'
-#     , 'grow.zt'
-#     , 'grow.sd'
-#     , 'rcsz.int'
-#     , 'rcsz.sd'
-#     , 'rcst.s1'
-#     , 'rcst.s2'
-#     , 'p.r'
-#     , 'repr.int' # model is for volume, NOT operc length
-#     , 'repr.t' # model is for volume, NOT operc length
-#     , 'repr.v' # v here b/c it's volume, NOT operc length
-#     #, 'U1'
-#   )
-#   
-#   ### implement IPM and calculate lambda
-#   # following IPM book pg. 162-164 and SizeQualityExample.R
-#   
-#   ## compute meshpoints
-#   mz <- 100 # number of size mesh points 
-#   mt <- 50  # number of touch mesh points
-#   Lz <- 0.1 # size lower bound
-#   Uz<- 10  # size upper bound
-#   Lt <- 0 # touch lower bound
-#   Ut <- 1 # touch upper bound
-#   hz <- (Uz-Lz)/mz # size mesh point breaks
-#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-#   ht <- (Ut-Lt)/mt # touch mesh point breaks
-#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-#   
-#   ## compute 4D kernel and 2D iteration matrix
-#   # Function eta to put kernel values in their proper place in A
-#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-#   
-#   # matrix whose (i,j) entry is eta(ij)
-#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-#   
-#   # code modified from IPM book, Ch 6, SizeQualityExample.R
-#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-#   for(i in 1:mz){
-#     for(j in 1:mt){
-#       for(k in 1:mt){
-#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-#         A[Eta[,k],Eta[i,j]]=kvals
-#         Kvals[,k,i,j]=kvals
-#         
-#       }}
-#     cat(i,"\n");
-#   }
-#   A<-hz*ht*A
-#   
-#   out <- domEig(A) # returns lambda and a vector proportional to w
-#   lam.boot <- out$lambda
-#   cat(lam.boot, "\n")
-#   return(lam.boot)
-#   
-# }
-# 
-# ### do the bootstrap (code takes ~ X min to run)
-# starttime <- Sys.time()
-# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-#                     R = 1000)
-# endtime <- Sys.time()
-# 
-# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-# 
-# 
-# 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aMrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - aMrU: define kernel components ----
-
-# IPM book pg. 24-25
-
-### survival: s(z)
-
-s_z_st <- function(z, m.par_st){
-  
-  ## linear predictor
-  
-  # below size ceiling
-  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
-  # above size ceiling
-  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
-  
-  # impose ceiling and backtransform from logit
-  p <- ifelse(z <= Uz1
-              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
-              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
-  )
-  
-  ## output
-  return( unname(p) )
-  
-  # ## back transform from logit
-  # p <- 1/(1+exp(-linear.p))
-}
-
-### growth: G(z', z, t)
-
-G_z1zt_st <- function(z1, z, t, m.par_st){
-  
-  ## based on growth regression coefficients, define mu and sigma of growth PDF
-  # below size ceiling
-  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
-  # above size ceiling
-  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
-  
-  sig <- m.par_st['grow.sd']
-  
-  ## calculate growth PDF
-  # have to loop b/c it's a PDF, not a probability
-  p.den.grow <- c()
-  for(q in 1:length(z1)){
-    p.den.grow[q] <- ifelse(z <= Uz1
-                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
-                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
-    )
-  }
-  
-  ## output
-  return(p.den.grow)
-  
-}
-### touch dynamics: T(t', t)
-
-T_t1t_st <- function(t1, t, m.par_st){
-  
-  p.den.touch <- dbeta(t1
-                       , shape1 = 300
-                       , shape2 = 300
-  )
-  
-  ## output
-  return(p.den.touch)
-}
-
-### prob reproduce: p_bz
-
-p_bz_st <- function(z, t, m.par_st){
-  ### convert z to v
-  v <- ifelse(z <= Uz1
-              , z * 131.18 - 152.52 # below ceiling
-              , Uz1 * 131.18 - 152.52 # above ceiling
-  )
-  
-  # linear predictor
-  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
-  
-  # back transform from logit
-  p <- 1/(1+exp(-linear.p))
-  
-  # output
-  return( unname(p) )
-}
-
-
-### fecundity: b_z
-
-b_z <- function(z){
-  # from Strathmann
-  
-  p.bz <- ifelse(z <= Uz1
-                 , 0.147 * (10 * z)^2.74
-                 , 0.147 * (10 * Uz1)^2.74
-  )
-  
-  return(p.bz)
-}
-
-### recruit size dist: C_0(z')
-
-C_0z1 <- function(z1, m.par_st){
-  mu <- m.par_st['rcsz.int']
-  sig <- m.par_st['rcsz.sd']
-  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
-  return(p.den.rcsz)
-}
-
-### recruit touch dist: C_0(t')
-
-C_0t1 <- function(t1, m.par_st){
-  
-  p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
-                      , shape1 = 1
-                      , shape2 = 1
-  )
-  
-  # shp1 <- m.par_st['rcst.s1']
-  # shp2 <- m.par_st['rcst.s2']
-  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
-  
-  
-  return(p.den.rcst)
-}
-
-
-### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
-
-P_z1z <- function(z1, z, t1, t, m.par_st){
-  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
-  )
-}
-
-### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
-
-F_z1z <- function(z1, z, t1, t, m.par_st){
-  return(
-    unname(
-      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
-    )
-  )
-}
-
-
-### define K kernel
-k_st <- function(z1, t1,  z, t, m.par_st){
-  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
-}
-
-# ---- *slow, ~ 2 min* IPM size touch - aMrU: numerical implementation ----
-
-# following IPM book pg. 162-164 and SizeQualityExample.R
-
-### compute meshpoints
-mz <- 100 # number of size mesh points 
-mt <- 50  # number of touch mesh points
-Lz <- 0.1 # size lower bound
-Uz<- 10  # size upper bound
-Lt <- 0 # touch lower bound
-Ut <- 1 # touch upper bound
-hz <- (Uz-Lz)/mz # size mesh point breaks
-yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-ht <- (Ut-Lt)/mt # touch mesh point breaks
-yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-
-### compute 4D kernel and 2D iteration matrix
-
-
-
-# Function eta to put kernel values in their proper place in A
-eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-
-# matrix whose (i,j) entry is eta(ij)
-Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-
-# code modified from IPM book, Ch 6, SizeQualityExample.R
-A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-for(i in 1:mz){
-  for(j in 1:mt){
-    for(k in 1:mt){
-      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-      A[Eta[,k],Eta[i,j]]=kvals
-      Kvals[,k,i,j]=kvals
-      
-    }}
-  cat(i,"\n");
-}
-A<-hz*ht*A
-
-# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
-# 
-# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
-# 
-# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
-# dim(A) <- c(mz * mt, mz * mt)
-# A <- hz*ht*A
-
-### calculate Lambda, w, and v
-out <- domEig(A) # returns lambda and a vector proportional to w
-out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
-lam.stable <- out$lambda
-lam.stable.t <- out2$lambda
-w <- Re(matrix(out$w, mz, mt))
-w <- w/(hz*ht*sum(w))
-v <- Re(matrix(out2$w, mz, mt))
-v <- v/sum(v) 
-
-# ---- IPM size touch - aMrU: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aMrU <- matrix(v, mz, mt)
-stable.state_aMrU <- matrix(w, mz, mt) 
-stable.state_aMrU.vector <- apply(stable.state_aMrU, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aMrU*repro.val_aMrU)
-sens <- outer(repro.val_aMrU,stable.state_aMrU)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aMrU.vector/sum(stable.state_aMrU.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aMrU.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aMrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aMrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aMrU
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aMrU
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-# # ---- *slow, ~ 34 hrs* IPM size touch - aMrU: lambda CI ----
-# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-# 
-# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-# 
-# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
-# boot.lam.st <- function(dataset, sample.index) {
-#   
-#   ### extract the data used to make this fit
-#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-#   
-#   ### fit the functions
-#   
-#   ## survival
-#   mod.Surv <- glm(Surv ~ z
-#                   , family = binomial
-#                   , data = boot.data
-#   )
-#   
-#   ## growth
-#   
-#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-#   
-#   #z.growth <- boot.data.growth$z
-#   mod.Grow_st <- lm(z1 ~ z * touch_pct
-#                     , data = boot.data.growth
-#                     
-#   )
-#   
-#   ## recruit size distribution
-#   mod.Rcsz <- lm(z ~ 1 
-#                  , data = rec
-#   )
-#   
-#   ### Store the estimated parameters
-#   
-#   m.par_st <- c(
-#     surv = coef(mod.Surv)
-#     , grow = coef(mod.Grow_st)
-#     , grow.sd = summary(mod.Grow_st)$sigma
-#     , rcsz = coef(mod.Rcsz)
-#     , rcsz.sd = summary(mod.Rcsz)$sigma
-#     , rcst = coef(betafit_t)
-#     , p.r = p.r.est
-#     , repr = coef(reprodyn.1b)
-#     #, U1 = U1
-#   )
-#   
-#   names(m.par_st) <- c(
-#     'surv.int'
-#     , 'surv.z'
-#     , 'grow.int'
-#     , 'grow.z'
-#     , 'grow.t'
-#     , 'grow.zt'
-#     , 'grow.sd'
-#     , 'rcsz.int'
-#     , 'rcsz.sd'
-#     , 'rcst.s1'
-#     , 'rcst.s2'
-#     , 'p.r'
-#     , 'repr.int' # model is for volume, NOT operc length
-#     , 'repr.t' # model is for volume, NOT operc length
-#     , 'repr.v' # v here b/c it's volume, NOT operc length
-#     #, 'U1'
-#   )
-#   
-#   ### implement IPM and calculate lambda
-#   # following IPM book pg. 162-164 and SizeQualityExample.R
-#   
-#   ## compute meshpoints
-#   mz <- 100 # number of size mesh points 
-#   mt <- 50  # number of touch mesh points
-#   Lz <- 0.1 # size lower bound
-#   Uz<- 10  # size upper bound
-#   Lt <- 0 # touch lower bound
-#   Ut <- 1 # touch upper bound
-#   hz <- (Uz-Lz)/mz # size mesh point breaks
-#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-#   ht <- (Ut-Lt)/mt # touch mesh point breaks
-#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-#   
-#   ## compute 4D kernel and 2D iteration matrix
-#   # Function eta to put kernel values in their proper place in A
-#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-#   
-#   # matrix whose (i,j) entry is eta(ij)
-#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-#   
-#   # code modified from IPM book, Ch 6, SizeQualityExample.R
-#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-#   for(i in 1:mz){
-#     for(j in 1:mt){
-#       for(k in 1:mt){
-#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-#         A[Eta[,k],Eta[i,j]]=kvals
-#         Kvals[,k,i,j]=kvals
-#         
-#       }}
-#     cat(i,"\n");
-#   }
-#   A<-hz*ht*A
-#   
-#   out <- domEig(A) # returns lambda and a vector proportional to w
-#   lam.boot <- out$lambda
-#   cat(lam.boot, "\n")
-#   return(lam.boot)
-#   
-# }
-# 
-# ### do the bootstrap (code takes ~ X min to run)
-# starttime <- Sys.time()
-# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-#                     R = 1000)
-# endtime <- Sys.time()
-# 
-# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-# 
-# 
-# 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aUrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~ aUrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - aUrU: define kernel components ----
 
 # IPM book pg. 24-25
@@ -5219,8 +3481,8 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aLrL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - aLrL: define kernel components ----
+# ~ aLrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aLrU: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -5333,9 +3595,9 @@ C_0z1 <- function(z1, m.par_st){
 
 C_0t1 <- function(t1, m.par_st){
   
-  p.den.rcst <- dbeta(t1 # recruits start with low crowd
-                      , shape1 = 2
-                      , shape2 = 50
+  p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
+                      , shape1 = 1
+                      , shape2 = 1
   )
   
   # shp1 <- m.par_st['rcst.s1']
@@ -5370,7 +3632,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - aLrL: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aLrU: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -5428,14 +3690,14 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - aLrL: perturbation analysis ----
+# ---- IPM size touch - aLrU: perturbation analysis ----
 
 ### Compute elasticity matrix 
-repro.val_aLrL <- matrix(v, mz, mt)
-stable.state_aLrL <- matrix(w, mz, mt) 
-stable.state_aLrL.vector <- apply(stable.state_aLrL, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aLrL*repro.val_aLrL)
-sens <- outer(repro.val_aLrL,stable.state_aLrL)/v.dot.w
+repro.val_aLrU <- matrix(v, mz, mt)
+stable.state_aLrU <- matrix(w, mz, mt) 
+stable.state_aLrU.vector <- apply(stable.state_aLrU, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aLrU*repro.val_aLrU)
+sens <- outer(repro.val_aLrU,stable.state_aLrU)/v.dot.w
 elas <- sens*Kvals/lam.stable
 
 ### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
@@ -5450,7 +3712,7 @@ cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n")
 ## stable size distribution
 
 plot(yz
-     , (stable.state_aLrL.vector/sum(stable.state_aLrL.vector))*10
+     , (stable.state_aLrU.vector/sum(stable.state_aLrU.vector))*10
      , xlab = "Operculum length, mm"
      , ylab = "Frequency"
      , type = "l"
@@ -5459,7 +3721,7 @@ plot(yz
 
 # # code following IPM book (I modified this to make it a probability)
 # plot(yz
-#      , stable.state_aLrL.vector
+#      , stable.state_aLrU.vector
 #      , xlab = "Size x"
 #      , ylab = "Frequency"
 #      , type = "l"
@@ -5471,14 +3733,14 @@ plot(yz
 ## stable size and crowding distribution
 image(yz
       , yt
-      , stable.state_aLrL
+      , stable.state_aLrU
       , col = grey(seq(0.5, 1, length=100))
       , xlab = "Operculum length, mm"
       , ylab = "Crowding"
 )
 contour(yz
         , yt
-        , stable.state_aLrL
+        , stable.state_aLrU
         , add = TRUE
         , nlevels = 6
         , labcex = 0.8
@@ -5487,14 +3749,14 @@ contour(yz
 ## reproductive value
 image(yz
       , yt
-      , repro.val_aLrL
+      , repro.val_aLrU
       , col = grey(seq(0.5, 1, length=100))
       , xlab = "Operculum length, mm"
       , ylab = "Crowding"
 )
 contour(yz
         , yt
-        , repro.val_aLrL
+        , repro.val_aLrU
         , add = TRUE
         , nlevels = 6
         , labcex = 0.8
@@ -5531,7 +3793,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - aLrL: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aLrU: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -5651,440 +3913,8 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aLrH ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - aLrH: define kernel components ----
-
-# IPM book pg. 24-25
-
-### survival: s(z)
-
-s_z_st <- function(z, m.par_st){
-  
-  ## linear predictor
-  
-  # below size ceiling
-  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
-  # above size ceiling
-  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
-  
-  # impose ceiling and backtransform from logit
-  p <- ifelse(z <= Uz1
-              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
-              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
-  )
-  
-  ## output
-  return( unname(p) )
-  
-  # ## back transform from logit
-  # p <- 1/(1+exp(-linear.p))
-}
-
-### growth: G(z', z, t)
-
-G_z1zt_st <- function(z1, z, t, m.par_st){
-  
-  ## based on growth regression coefficients, define mu and sigma of growth PDF
-  # below size ceiling
-  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
-  # above size ceiling
-  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
-  
-  sig <- m.par_st['grow.sd']
-  
-  ## calculate growth PDF
-  # have to loop b/c it's a PDF, not a probability
-  p.den.grow <- c()
-  for(q in 1:length(z1)){
-    p.den.grow[q] <- ifelse(z <= Uz1
-                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
-                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
-    )
-  }
-  
-  ## output
-  return(p.den.grow)
-  
-}
-### touch dynamics: T(t', t)
-
-T_t1t_st <- function(t1, t, m.par_st){
-  
-  p.den.touch <- dbeta(t1
-                       , shape1 = 2
-                       , shape2 = 50
-  )
-  
-  ## output
-  return(p.den.touch)
-}
-
-### prob reproduce: p_bz
-
-p_bz_st <- function(z, t, m.par_st){
-  ### convert z to v
-  v <- ifelse(z <= Uz1
-              , z * 131.18 - 152.52 # below ceiling
-              , Uz1 * 131.18 - 152.52 # above ceiling
-  )
-  
-  # linear predictor
-  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
-  
-  # back transform from logit
-  p <- 1/(1+exp(-linear.p))
-  
-  # output
-  return( unname(p) )
-}
-
-
-### fecundity: b_z
-
-b_z <- function(z){
-  # from Strathmann
-  
-  p.bz <- ifelse(z <= Uz1
-                 , 0.147 * (10 * z)^2.74
-                 , 0.147 * (10 * Uz1)^2.74
-  )
-  
-  return(p.bz)
-}
-
-### recruit size dist: C_0(z')
-
-C_0z1 <- function(z1, m.par_st){
-  mu <- m.par_st['rcsz.int']
-  sig <- m.par_st['rcsz.sd']
-  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
-  return(p.den.rcsz)
-}
-
-### recruit touch dist: C_0(t')
-
-C_0t1 <- function(t1, m.par_st){
-  
-  p.den.rcst <- dbeta(t1 # recruits start with low crowd
-                      , shape1 = 50
-                      , shape2 = 2
-  )
-  
-  # shp1 <- m.par_st['rcst.s1']
-  # shp2 <- m.par_st['rcst.s2']
-  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
-  
-  
-  return(p.den.rcst)
-}
-
-
-### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
-
-P_z1z <- function(z1, z, t1, t, m.par_st){
-  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
-  )
-}
-
-### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
-
-F_z1z <- function(z1, z, t1, t, m.par_st){
-  return(
-    unname(
-      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
-    )
-  )
-}
-
-
-### define K kernel
-k_st <- function(z1, t1,  z, t, m.par_st){
-  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
-}
-
-# ---- *slow, ~ 2 min* IPM size touch - aLrH: numerical implementation ----
-
-# following IPM book pg. 162-164 and SizeQualityExample.R
-
-### compute meshpoints
-mz <- 100 # number of size mesh points 
-mt <- 50  # number of touch mesh points
-Lz <- 0.1 # size lower bound
-Uz<- 10  # size upper bound
-Lt <- 0 # touch lower bound
-Ut <- 1 # touch upper bound
-hz <- (Uz-Lz)/mz # size mesh point breaks
-yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-ht <- (Ut-Lt)/mt # touch mesh point breaks
-yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-
-### compute 4D kernel and 2D iteration matrix
-
-
-
-# Function eta to put kernel values in their proper place in A
-eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-
-# matrix whose (i,j) entry is eta(ij)
-Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-
-# code modified from IPM book, Ch 6, SizeQualityExample.R
-A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-for(i in 1:mz){
-  for(j in 1:mt){
-    for(k in 1:mt){
-      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-      A[Eta[,k],Eta[i,j]]=kvals
-      Kvals[,k,i,j]=kvals
-      
-    }}
-  cat(i,"\n");
-}
-A<-hz*ht*A
-
-# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
-# 
-# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
-# 
-# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
-# dim(A) <- c(mz * mt, mz * mt)
-# A <- hz*ht*A
-
-### calculate Lambda, w, and v
-out <- domEig(A) # returns lambda and a vector proportional to w
-out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
-lam.stable <- out$lambda
-lam.stable.t <- out2$lambda
-w <- Re(matrix(out$w, mz, mt))
-w <- w/(hz*ht*sum(w))
-v <- Re(matrix(out2$w, mz, mt))
-v <- v/sum(v) 
-
-# ---- IPM size touch - aLrH: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aLrH <- matrix(v, mz, mt)
-stable.state_aLrH <- matrix(w, mz, mt) 
-stable.state_aLrH.vector <- apply(stable.state_aLrH, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aLrH*repro.val_aLrH)
-sens <- outer(repro.val_aLrH,stable.state_aLrH)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aLrH.vector/sum(stable.state_aLrH.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aLrH.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aLrH
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aLrH
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aLrH
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aLrH
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-# # ---- *slow, ~ 34 hrs* IPM size touch - aLrH: lambda CI ----
-# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-# 
-# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-# 
-# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
-# boot.lam.st <- function(dataset, sample.index) {
-#   
-#   ### extract the data used to make this fit
-#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-#   
-#   ### fit the functions
-#   
-#   ## survival
-#   mod.Surv <- glm(Surv ~ z
-#                   , family = binomial
-#                   , data = boot.data
-#   )
-#   
-#   ## growth
-#   
-#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-#   
-#   #z.growth <- boot.data.growth$z
-#   mod.Grow_st <- lm(z1 ~ z * touch_pct
-#                     , data = boot.data.growth
-#                     
-#   )
-#   
-#   ## recruit size distribution
-#   mod.Rcsz <- lm(z ~ 1 
-#                  , data = rec
-#   )
-#   
-#   ### Store the estimated parameters
-#   
-#   m.par_st <- c(
-#     surv = coef(mod.Surv)
-#     , grow = coef(mod.Grow_st)
-#     , grow.sd = summary(mod.Grow_st)$sigma
-#     , rcsz = coef(mod.Rcsz)
-#     , rcsz.sd = summary(mod.Rcsz)$sigma
-#     , rcst = coef(betafit_t)
-#     , p.r = p.r.est
-#     , repr = coef(reprodyn.1b)
-#     #, U1 = U1
-#   )
-#   
-#   names(m.par_st) <- c(
-#     'surv.int'
-#     , 'surv.z'
-#     , 'grow.int'
-#     , 'grow.z'
-#     , 'grow.t'
-#     , 'grow.zt'
-#     , 'grow.sd'
-#     , 'rcsz.int'
-#     , 'rcsz.sd'
-#     , 'rcst.s1'
-#     , 'rcst.s2'
-#     , 'p.r'
-#     , 'repr.int' # model is for volume, NOT operc length
-#     , 'repr.t' # model is for volume, NOT operc length
-#     , 'repr.v' # v here b/c it's volume, NOT operc length
-#     #, 'U1'
-#   )
-#   
-#   ### implement IPM and calculate lambda
-#   # following IPM book pg. 162-164 and SizeQualityExample.R
-#   
-#   ## compute meshpoints
-#   mz <- 100 # number of size mesh points 
-#   mt <- 50  # number of touch mesh points
-#   Lz <- 0.1 # size lower bound
-#   Uz<- 10  # size upper bound
-#   Lt <- 0 # touch lower bound
-#   Ut <- 1 # touch upper bound
-#   hz <- (Uz-Lz)/mz # size mesh point breaks
-#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-#   ht <- (Ut-Lt)/mt # touch mesh point breaks
-#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-#   
-#   ## compute 4D kernel and 2D iteration matrix
-#   # Function eta to put kernel values in their proper place in A
-#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-#   
-#   # matrix whose (i,j) entry is eta(ij)
-#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-#   
-#   # code modified from IPM book, Ch 6, SizeQualityExample.R
-#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-#   for(i in 1:mz){
-#     for(j in 1:mt){
-#       for(k in 1:mt){
-#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-#         A[Eta[,k],Eta[i,j]]=kvals
-#         Kvals[,k,i,j]=kvals
-#         
-#       }}
-#     cat(i,"\n");
-#   }
-#   A<-hz*ht*A
-#   
-#   out <- domEig(A) # returns lambda and a vector proportional to w
-#   lam.boot <- out$lambda
-#   cat(lam.boot, "\n")
-#   return(lam.boot)
-#   
-# }
-# 
-# ### do the bootstrap (code takes ~ X min to run)
-# starttime <- Sys.time()
-# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-#                     R = 1000)
-# endtime <- Sys.time()
-# 
-# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-# 
-# 
-# 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aHrH ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - aHrH: define kernel components ----
+# ~ aHrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aHrU: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -6198,8 +4028,8 @@ C_0z1 <- function(z1, m.par_st){
 C_0t1 <- function(t1, m.par_st){
   
   p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
-                      , shape1 = 50
-                      , shape2 = 2
+                      , shape1 = 1
+                      , shape2 = 1
   )
   
   # shp1 <- m.par_st['rcst.s1']
@@ -6234,7 +4064,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - aHrH: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aHrU: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -6292,14 +4122,14 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - aHrH: perturbation analysis ----
+# ---- IPM size touch - aHrU: perturbation analysis ----
 
 ### Compute elasticity matrix 
-repro.val_aHrH <- matrix(v, mz, mt)
-stable.state_aHrH <- matrix(w, mz, mt) 
-stable.state_aHrH.vector <- apply(stable.state_aHrH, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aHrH*repro.val_aHrH)
-sens <- outer(repro.val_aHrH,stable.state_aHrH)/v.dot.w
+repro.val_aHrU <- matrix(v, mz, mt)
+stable.state_aHrU <- matrix(w, mz, mt) 
+stable.state_aHrU.vector <- apply(stable.state_aHrU, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aHrU*repro.val_aHrU)
+sens <- outer(repro.val_aHrU,stable.state_aHrU)/v.dot.w
 elas <- sens*Kvals/lam.stable
 
 ### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
@@ -6314,7 +4144,7 @@ cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n")
 ## stable size distribution
 
 plot(yz
-     , (stable.state_aHrH.vector/sum(stable.state_aHrH.vector))*10
+     , (stable.state_aHrU.vector/sum(stable.state_aHrU.vector))*10
      , xlab = "Operculum length, mm"
      , ylab = "Frequency"
      , type = "l"
@@ -6323,7 +4153,7 @@ plot(yz
 
 # # code following IPM book (I modified this to make it a probability)
 # plot(yz
-#      , stable.state_aHrH.vector
+#      , stable.state_aHrU.vector
 #      , xlab = "Size x"
 #      , ylab = "Frequency"
 #      , type = "l"
@@ -6335,14 +4165,14 @@ plot(yz
 ## stable size and crowding distribution
 image(yz
       , yt
-      , stable.state_aHrH
+      , stable.state_aHrU
       , col = grey(seq(0.5, 1, length=100))
       , xlab = "Operculum length, mm"
       , ylab = "Crowding"
 )
 contour(yz
         , yt
-        , stable.state_aHrH
+        , stable.state_aHrU
         , add = TRUE
         , nlevels = 6
         , labcex = 0.8
@@ -6351,14 +4181,14 @@ contour(yz
 ## reproductive value
 image(yz
       , yt
-      , repro.val_aHrH
+      , repro.val_aHrU
       , col = grey(seq(0.5, 1, length=100))
       , xlab = "Operculum length, mm"
       , ylab = "Crowding"
 )
 contour(yz
         , yt
-        , repro.val_aHrH
+        , repro.val_aHrU
         , add = TRUE
         , nlevels = 6
         , labcex = 0.8
@@ -6395,7 +4225,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - aHrH: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aHrU: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -6515,871 +4345,7 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aHrL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - aHrL: define kernel components ----
-
-# IPM book pg. 24-25
-
-### survival: s(z)
-
-s_z_st <- function(z, m.par_st){
-  
-  ## linear predictor
-  
-  # below size ceiling
-  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
-  # above size ceiling
-  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
-  
-  # impose ceiling and backtransform from logit
-  p <- ifelse(z <= Uz1
-              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
-              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
-  )
-  
-  ## output
-  return( unname(p) )
-  
-  # ## back transform from logit
-  # p <- 1/(1+exp(-linear.p))
-}
-
-### growth: G(z', z, t)
-
-G_z1zt_st <- function(z1, z, t, m.par_st){
-  
-  ## based on growth regression coefficients, define mu and sigma of growth PDF
-  # below size ceiling
-  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
-  # above size ceiling
-  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
-  
-  sig <- m.par_st['grow.sd']
-  
-  ## calculate growth PDF
-  # have to loop b/c it's a PDF, not a probability
-  p.den.grow <- c()
-  for(q in 1:length(z1)){
-    p.den.grow[q] <- ifelse(z <= Uz1
-                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
-                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
-    )
-  }
-  
-  ## output
-  return(p.den.grow)
-  
-}
-### touch dynamics: T(t', t)
-
-T_t1t_st <- function(t1, t, m.par_st){
-  
-  p.den.touch <- dbeta(t1
-                       , shape1 = 50
-                       , shape2 = 2
-  )
-  
-  ## output
-  return(p.den.touch)
-}
-
-### prob reproduce: p_bz
-
-p_bz_st <- function(z, t, m.par_st){
-  ### convert z to v
-  v <- ifelse(z <= Uz1
-              , z * 131.18 - 152.52 # below ceiling
-              , Uz1 * 131.18 - 152.52 # above ceiling
-  )
-  
-  # linear predictor
-  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
-  
-  # back transform from logit
-  p <- 1/(1+exp(-linear.p))
-  
-  # output
-  return( unname(p) )
-}
-
-
-### fecundity: b_z
-
-b_z <- function(z){
-  # from Strathmann
-  
-  p.bz <- ifelse(z <= Uz1
-                 , 0.147 * (10 * z)^2.74
-                 , 0.147 * (10 * Uz1)^2.74
-  )
-  
-  return(p.bz)
-}
-
-### recruit size dist: C_0(z')
-
-C_0z1 <- function(z1, m.par_st){
-  mu <- m.par_st['rcsz.int']
-  sig <- m.par_st['rcsz.sd']
-  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
-  return(p.den.rcsz)
-}
-
-### recruit touch dist: C_0(t')
-
-C_0t1 <- function(t1, m.par_st){
-  
-  p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
-                      , shape1 = 2
-                      , shape2 = 50
-  )
-  
-  # shp1 <- m.par_st['rcst.s1']
-  # shp2 <- m.par_st['rcst.s2']
-  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
-  
-  
-  return(p.den.rcst)
-}
-
-
-### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
-
-P_z1z <- function(z1, z, t1, t, m.par_st){
-  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
-  )
-}
-
-### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
-
-F_z1z <- function(z1, z, t1, t, m.par_st){
-  return(
-    unname(
-      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
-    )
-  )
-}
-
-
-### define K kernel
-k_st <- function(z1, t1,  z, t, m.par_st){
-  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
-}
-
-# ---- *slow, ~ 2 min* IPM size touch - aHrL: numerical implementation ----
-
-# following IPM book pg. 162-164 and SizeQualityExample.R
-
-### compute meshpoints
-mz <- 100 # number of size mesh points 
-mt <- 50  # number of touch mesh points
-Lz <- 0.1 # size lower bound
-Uz<- 10  # size upper bound
-Lt <- 0 # touch lower bound
-Ut <- 1 # touch upper bound
-hz <- (Uz-Lz)/mz # size mesh point breaks
-yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-ht <- (Ut-Lt)/mt # touch mesh point breaks
-yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-
-### compute 4D kernel and 2D iteration matrix
-
-
-
-# Function eta to put kernel values in their proper place in A
-eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-
-# matrix whose (i,j) entry is eta(ij)
-Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-
-# code modified from IPM book, Ch 6, SizeQualityExample.R
-A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-for(i in 1:mz){
-  for(j in 1:mt){
-    for(k in 1:mt){
-      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-      A[Eta[,k],Eta[i,j]]=kvals
-      Kvals[,k,i,j]=kvals
-      
-    }}
-  cat(i,"\n");
-}
-A<-hz*ht*A
-
-# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
-# 
-# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
-# 
-# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
-# dim(A) <- c(mz * mt, mz * mt)
-# A <- hz*ht*A
-
-### calculate Lambda, w, and v
-out <- domEig(A) # returns lambda and a vector proportional to w
-out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
-lam.stable <- out$lambda
-lam.stable.t <- out2$lambda
-w <- Re(matrix(out$w, mz, mt))
-w <- w/(hz*ht*sum(w))
-v <- Re(matrix(out2$w, mz, mt))
-v <- v/sum(v) 
-
-# ---- IPM size touch - aHrL: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aHrL <- matrix(v, mz, mt)
-stable.state_aHrL <- matrix(w, mz, mt) 
-stable.state_aHrL.vector <- apply(stable.state_aHrL, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aHrL*repro.val_aHrL)
-sens <- outer(repro.val_aHrL,stable.state_aHrL)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aHrL.vector/sum(stable.state_aHrL.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aHrL.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aHrL
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aHrL
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aHrL
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aHrL
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-# # ---- *slow, ~ 34 hrs* IPM size touch - aHrL: lambda CI ----
-# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-# 
-# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-# 
-# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
-# boot.lam.st <- function(dataset, sample.index) {
-#   
-#   ### extract the data used to make this fit
-#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-#   
-#   ### fit the functions
-#   
-#   ## survival
-#   mod.Surv <- glm(Surv ~ z
-#                   , family = binomial
-#                   , data = boot.data
-#   )
-#   
-#   ## growth
-#   
-#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-#   
-#   #z.growth <- boot.data.growth$z
-#   mod.Grow_st <- lm(z1 ~ z * touch_pct
-#                     , data = boot.data.growth
-#                     
-#   )
-#   
-#   ## recruit size distribution
-#   mod.Rcsz <- lm(z ~ 1 
-#                  , data = rec
-#   )
-#   
-#   ### Store the estimated parameters
-#   
-#   m.par_st <- c(
-#     surv = coef(mod.Surv)
-#     , grow = coef(mod.Grow_st)
-#     , grow.sd = summary(mod.Grow_st)$sigma
-#     , rcsz = coef(mod.Rcsz)
-#     , rcsz.sd = summary(mod.Rcsz)$sigma
-#     , rcst = coef(betafit_t)
-#     , p.r = p.r.est
-#     , repr = coef(reprodyn.1b)
-#     #, U1 = U1
-#   )
-#   
-#   names(m.par_st) <- c(
-#     'surv.int'
-#     , 'surv.z'
-#     , 'grow.int'
-#     , 'grow.z'
-#     , 'grow.t'
-#     , 'grow.zt'
-#     , 'grow.sd'
-#     , 'rcsz.int'
-#     , 'rcsz.sd'
-#     , 'rcst.s1'
-#     , 'rcst.s2'
-#     , 'p.r'
-#     , 'repr.int' # model is for volume, NOT operc length
-#     , 'repr.t' # model is for volume, NOT operc length
-#     , 'repr.v' # v here b/c it's volume, NOT operc length
-#     #, 'U1'
-#   )
-#   
-#   ### implement IPM and calculate lambda
-#   # following IPM book pg. 162-164 and SizeQualityExample.R
-#   
-#   ## compute meshpoints
-#   mz <- 100 # number of size mesh points 
-#   mt <- 50  # number of touch mesh points
-#   Lz <- 0.1 # size lower bound
-#   Uz<- 10  # size upper bound
-#   Lt <- 0 # touch lower bound
-#   Ut <- 1 # touch upper bound
-#   hz <- (Uz-Lz)/mz # size mesh point breaks
-#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-#   ht <- (Ut-Lt)/mt # touch mesh point breaks
-#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-#   
-#   ## compute 4D kernel and 2D iteration matrix
-#   # Function eta to put kernel values in their proper place in A
-#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-#   
-#   # matrix whose (i,j) entry is eta(ij)
-#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-#   
-#   # code modified from IPM book, Ch 6, SizeQualityExample.R
-#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-#   for(i in 1:mz){
-#     for(j in 1:mt){
-#       for(k in 1:mt){
-#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-#         A[Eta[,k],Eta[i,j]]=kvals
-#         Kvals[,k,i,j]=kvals
-#         
-#       }}
-#     cat(i,"\n");
-#   }
-#   A<-hz*ht*A
-#   
-#   out <- domEig(A) # returns lambda and a vector proportional to w
-#   lam.boot <- out$lambda
-#   cat(lam.boot, "\n")
-#   return(lam.boot)
-#   
-# }
-# 
-# ### do the bootstrap (code takes ~ X min to run)
-# starttime <- Sys.time()
-# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-#                     R = 1000)
-# endtime <- Sys.time()
-# 
-# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-# 
-# 
-# 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aMrM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - aMrM: define kernel components ----
-
-# IPM book pg. 24-25
-
-### survival: s(z)
-
-s_z_st <- function(z, m.par_st){
-  
-  ## linear predictor
-  
-  # below size ceiling
-  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
-  # above size ceiling
-  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
-  
-  # impose ceiling and backtransform from logit
-  p <- ifelse(z <= Uz1
-              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
-              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
-  )
-  
-  ## output
-  return( unname(p) )
-  
-  # ## back transform from logit
-  # p <- 1/(1+exp(-linear.p))
-}
-
-### growth: G(z', z, t)
-
-G_z1zt_st <- function(z1, z, t, m.par_st){
-  
-  ## based on growth regression coefficients, define mu and sigma of growth PDF
-  # below size ceiling
-  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
-  # above size ceiling
-  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
-  
-  sig <- m.par_st['grow.sd']
-  
-  ## calculate growth PDF
-  # have to loop b/c it's a PDF, not a probability
-  p.den.grow <- c()
-  for(q in 1:length(z1)){
-    p.den.grow[q] <- ifelse(z <= Uz1
-                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
-                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
-    )
-  }
-  
-  ## output
-  return(p.den.grow)
-  
-}
-### touch dynamics: T(t', t)
-
-T_t1t_st <- function(t1, t, m.par_st){
-  
-  p.den.touch <- dbeta(t1
-                       , shape1 = 300
-                       , shape2 = 300
-  )
-  
-  ## output
-  return(p.den.touch)
-}
-
-### prob reproduce: p_bz
-
-p_bz_st <- function(z, t, m.par_st){
-  ### convert z to v
-  v <- ifelse(z <= Uz1
-              , z * 131.18 - 152.52 # below ceiling
-              , Uz1 * 131.18 - 152.52 # above ceiling
-  )
-  
-  # linear predictor
-  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
-  
-  # back transform from logit
-  p <- 1/(1+exp(-linear.p))
-  
-  # output
-  return( unname(p) )
-}
-
-
-### fecundity: b_z
-
-b_z <- function(z){
-  # from Strathmann
-  
-  p.bz <- ifelse(z <= Uz1
-                 , 0.147 * (10 * z)^2.74
-                 , 0.147 * (10 * Uz1)^2.74
-  )
-  
-  return(p.bz)
-}
-
-### recruit size dist: C_0(z')
-
-C_0z1 <- function(z1, m.par_st){
-  mu <- m.par_st['rcsz.int']
-  sig <- m.par_st['rcsz.sd']
-  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
-  return(p.den.rcsz)
-}
-
-### recruit touch dist: C_0(t')
-
-C_0t1 <- function(t1, m.par_st){
-  
-  p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
-                      , shape1 = 300
-                      , shape2 = 300
-  )
-  
-  # shp1 <- m.par_st['rcst.s1']
-  # shp2 <- m.par_st['rcst.s2']
-  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
-  
-  
-  return(p.den.rcst)
-}
-
-
-### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
-
-P_z1z <- function(z1, z, t1, t, m.par_st){
-  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
-  )
-}
-
-### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
-
-F_z1z <- function(z1, z, t1, t, m.par_st){
-  return(
-    unname(
-      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
-    )
-  )
-}
-
-
-### define K kernel
-k_st <- function(z1, t1,  z, t, m.par_st){
-  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
-}
-
-# ---- *slow, ~ 2 min* IPM size touch - aMrM: numerical implementation ----
-
-# following IPM book pg. 162-164 and SizeQualityExample.R
-
-### compute meshpoints
-mz <- 100 # number of size mesh points 
-mt <- 50  # number of touch mesh points
-Lz <- 0.1 # size lower bound
-Uz<- 10  # size upper bound
-Lt <- 0 # touch lower bound
-Ut <- 1 # touch upper bound
-hz <- (Uz-Lz)/mz # size mesh point breaks
-yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-ht <- (Ut-Lt)/mt # touch mesh point breaks
-yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-
-### compute 4D kernel and 2D iteration matrix
-
-
-
-# Function eta to put kernel values in their proper place in A
-eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-
-# matrix whose (i,j) entry is eta(ij)
-Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-
-# code modified from IPM book, Ch 6, SizeQualityExample.R
-A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-for(i in 1:mz){
-  for(j in 1:mt){
-    for(k in 1:mt){
-      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-      A[Eta[,k],Eta[i,j]]=kvals
-      Kvals[,k,i,j]=kvals
-      
-    }}
-  cat(i,"\n");
-}
-A<-hz*ht*A
-
-# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
-# 
-# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
-# 
-# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
-# dim(A) <- c(mz * mt, mz * mt)
-# A <- hz*ht*A
-
-### calculate Lambda, w, and v
-out <- domEig(A) # returns lambda and a vector proportional to w
-out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
-lam.stable <- out$lambda
-lam.stable.t <- out2$lambda
-w <- Re(matrix(out$w, mz, mt))
-w <- w/(hz*ht*sum(w))
-v <- Re(matrix(out2$w, mz, mt))
-v <- v/sum(v) 
-
-# ---- IPM size touch - aMrM: perturbation analysis ----
-
-### Compute elasticity matrix 
-repro.val_aMrM <- matrix(v, mz, mt)
-stable.state_aMrM <- matrix(w, mz, mt) 
-stable.state_aMrM.vector <- apply(stable.state_aMrM, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aMrM*repro.val_aMrM)
-sens <- outer(repro.val_aMrM,stable.state_aMrM)/v.dot.w
-elas <- sens*Kvals/lam.stable
-
-### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
-
-### Checks
-cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
-cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
-
-### Plots
-
-## stable size distribution
-
-plot(yz
-     , (stable.state_aMrM.vector/sum(stable.state_aMrM.vector))*10
-     , xlab = "Operculum length, mm"
-     , ylab = "Frequency"
-     , type = "l"
-     , ylim = c(0, 1)
-)
-
-# # code following IPM book (I modified this to make it a probability)
-# plot(yz
-#      , stable.state_aMrM.vector
-#      , xlab = "Size x"
-#      , ylab = "Frequency"
-#      , type = "l"
-# )
-
-
-
-
-## stable size and crowding distribution
-image(yz
-      , yt
-      , stable.state_aMrM
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , stable.state_aMrM
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## reproductive value
-image(yz
-      , yt
-      , repro.val_aMrM
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , repro.val_aMrM
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-## total elasticity
-# image(yt
-#       , yz
-#       , t(total.elas)
-#       , col = grey(seq(0.5, 1, length=100))
-#       , xlab = "Crowding"
-#       , ylab = "Operculum length, mm"
-# )
-# contour(yt
-#         , yz
-#         , t(total.elas)
-#         , add = TRUE
-#         , nlevels = 6
-#         , labcex = 0.8
-# )
-
-image(yz
-      , yt
-      , total.elas
-      , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
-      , ylab = "Crowding"
-)
-contour(yz
-        , yt
-        , total.elas
-        , add = TRUE
-        , nlevels = 6
-        , labcex = 0.8
-)
-
-# # ---- *slow, ~ 34 hrs* IPM size touch - aMrM: lambda CI ----
-# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
-# 
-# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
-# 
-# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
-# boot.lam.st <- function(dataset, sample.index) {
-#   
-#   ### extract the data used to make this fit
-#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
-#   
-#   ### fit the functions
-#   
-#   ## survival
-#   mod.Surv <- glm(Surv ~ z
-#                   , family = binomial
-#                   , data = boot.data
-#   )
-#   
-#   ## growth
-#   
-#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
-#   
-#   #z.growth <- boot.data.growth$z
-#   mod.Grow_st <- lm(z1 ~ z * touch_pct
-#                     , data = boot.data.growth
-#                     
-#   )
-#   
-#   ## recruit size distribution
-#   mod.Rcsz <- lm(z ~ 1 
-#                  , data = rec
-#   )
-#   
-#   ### Store the estimated parameters
-#   
-#   m.par_st <- c(
-#     surv = coef(mod.Surv)
-#     , grow = coef(mod.Grow_st)
-#     , grow.sd = summary(mod.Grow_st)$sigma
-#     , rcsz = coef(mod.Rcsz)
-#     , rcsz.sd = summary(mod.Rcsz)$sigma
-#     , rcst = coef(betafit_t)
-#     , p.r = p.r.est
-#     , repr = coef(reprodyn.1b)
-#     #, U1 = U1
-#   )
-#   
-#   names(m.par_st) <- c(
-#     'surv.int'
-#     , 'surv.z'
-#     , 'grow.int'
-#     , 'grow.z'
-#     , 'grow.t'
-#     , 'grow.zt'
-#     , 'grow.sd'
-#     , 'rcsz.int'
-#     , 'rcsz.sd'
-#     , 'rcst.s1'
-#     , 'rcst.s2'
-#     , 'p.r'
-#     , 'repr.int' # model is for volume, NOT operc length
-#     , 'repr.t' # model is for volume, NOT operc length
-#     , 'repr.v' # v here b/c it's volume, NOT operc length
-#     #, 'U1'
-#   )
-#   
-#   ### implement IPM and calculate lambda
-#   # following IPM book pg. 162-164 and SizeQualityExample.R
-#   
-#   ## compute meshpoints
-#   mz <- 100 # number of size mesh points 
-#   mt <- 50  # number of touch mesh points
-#   Lz <- 0.1 # size lower bound
-#   Uz<- 10  # size upper bound
-#   Lt <- 0 # touch lower bound
-#   Ut <- 1 # touch upper bound
-#   hz <- (Uz-Lz)/mz # size mesh point breaks
-#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
-#   ht <- (Ut-Lt)/mt # touch mesh point breaks
-#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
-#   
-#   ## compute 4D kernel and 2D iteration matrix
-#   # Function eta to put kernel values in their proper place in A
-#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
-#   
-#   # matrix whose (i,j) entry is eta(ij)
-#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
-#   
-#   # code modified from IPM book, Ch 6, SizeQualityExample.R
-#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
-#   for(i in 1:mz){
-#     for(j in 1:mt){
-#       for(k in 1:mt){
-#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
-#         A[Eta[,k],Eta[i,j]]=kvals
-#         Kvals[,k,i,j]=kvals
-#         
-#       }}
-#     cat(i,"\n");
-#   }
-#   A<-hz*ht*A
-#   
-#   out <- domEig(A) # returns lambda and a vector proportional to w
-#   lam.boot <- out$lambda
-#   cat(lam.boot, "\n")
-#   return(lam.boot)
-#   
-# }
-# 
-# ### do the bootstrap (code takes ~ X min to run)
-# starttime <- Sys.time()
-# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
-#                     R = 1000)
-# endtime <- Sys.time()
-# 
-# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
-# 
-# 
-# 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aUrL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~ aUrL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - aUrL: define kernel components ----
 
 # IPM book pg. 24-25
@@ -7811,7 +4777,7 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aUrH ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~ aUrH ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM size touch - aUrH: define kernel components ----
 
 # IPM book pg. 24-25
@@ -8243,8 +5209,8 @@ contour(yz
 # 
 # 
 # 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aUrM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- IPM size touch - aUrM: define kernel components ----
+# ~ aLrL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aLrL: define kernel components ----
 
 # IPM book pg. 24-25
 
@@ -8303,8 +5269,8 @@ G_z1zt_st <- function(z1, z, t, m.par_st){
 T_t1t_st <- function(t1, t, m.par_st){
   
   p.den.touch <- dbeta(t1
-                       , shape1 = 1
-                       , shape2 = 1
+                       , shape1 = 2
+                       , shape2 = 50
   )
   
   ## output
@@ -8358,8 +5324,8 @@ C_0z1 <- function(z1, m.par_st){
 C_0t1 <- function(t1, m.par_st){
   
   p.den.rcst <- dbeta(t1 # recruits start with low crowd
-                      , shape1 = 300
-                      , shape2 = 300
+                      , shape1 = 2
+                      , shape2 = 50
   )
   
   # shp1 <- m.par_st['rcst.s1']
@@ -8394,7 +5360,7 @@ k_st <- function(z1, t1,  z, t, m.par_st){
   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
 }
 
-# ---- *slow, ~ 2 min* IPM size touch - aUrM: numerical implementation ----
+# ---- *slow, ~ 2 min* IPM size touch - aLrL: numerical implementation ----
 
 # following IPM book pg. 162-164 and SizeQualityExample.R
 
@@ -8452,14 +5418,14 @@ w <- w/(hz*ht*sum(w))
 v <- Re(matrix(out2$w, mz, mt))
 v <- v/sum(v) 
 
-# ---- IPM size touch - aUrM: perturbation analysis ----
+# ---- IPM size touch - aLrL: perturbation analysis ----
 
 ### Compute elasticity matrix 
-repro.val_aUrM <- matrix(v, mz, mt)
-stable.state_aUrM <- matrix(w, mz, mt) 
-stable.state_aUrM.vector <- apply(stable.state_aUrM, 1, sum)
-v.dot.w <- sum(hz*ht*stable.state_aUrM*repro.val_aUrM)
-sens <- outer(repro.val_aUrM,stable.state_aUrM)/v.dot.w
+repro.val_aLrL <- matrix(v, mz, mt)
+stable.state_aLrL <- matrix(w, mz, mt) 
+stable.state_aLrL.vector <- apply(stable.state_aLrL, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aLrL*repro.val_aLrL)
+sens <- outer(repro.val_aLrL,stable.state_aLrL)/v.dot.w
 elas <- sens*Kvals/lam.stable
 
 ### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
@@ -8474,7 +5440,7 @@ cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n")
 ## stable size distribution
 
 plot(yz
-     , (stable.state_aUrM.vector/sum(stable.state_aUrM.vector))*10
+     , (stable.state_aLrL.vector/sum(stable.state_aLrL.vector))*10
      , xlab = "Operculum length, mm"
      , ylab = "Frequency"
      , type = "l"
@@ -8483,7 +5449,7 @@ plot(yz
 
 # # code following IPM book (I modified this to make it a probability)
 # plot(yz
-#      , stable.state_aUrM.vector
+#      , stable.state_aLrL.vector
 #      , xlab = "Size x"
 #      , ylab = "Frequency"
 #      , type = "l"
@@ -8495,14 +5461,14 @@ plot(yz
 ## stable size and crowding distribution
 image(yz
       , yt
-      , stable.state_aUrM
+      , stable.state_aLrL
       , col = grey(seq(0.5, 1, length=100))
       , xlab = "Operculum length, mm"
       , ylab = "Crowding"
 )
 contour(yz
         , yt
-        , stable.state_aUrM
+        , stable.state_aLrL
         , add = TRUE
         , nlevels = 6
         , labcex = 0.8
@@ -8511,14 +5477,14 @@ contour(yz
 ## reproductive value
 image(yz
       , yt
-      , repro.val_aUrM
+      , repro.val_aLrL
       , col = grey(seq(0.5, 1, length=100))
       , xlab = "Operculum length, mm"
       , ylab = "Crowding"
 )
 contour(yz
         , yt
-        , repro.val_aUrM
+        , repro.val_aLrL
         , add = TRUE
         , nlevels = 6
         , labcex = 0.8
@@ -8555,7 +5521,7 @@ contour(yz
         , labcex = 0.8
 )
 
-# # ---- *slow, ~ 34 hrs* IPM size touch - aUrM: lambda CI ----
+# # ---- *slow, ~ 34 hrs* IPM size touch - aLrL: lambda CI ----
 # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
 # 
 # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
@@ -8674,3 +5640,3040 @@ contour(yz
 # boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
 # 
 # 
+# 
+# ~ aLrH ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aLrH: define kernel components ----
+
+# IPM book pg. 24-25
+
+### survival: s(z)
+
+s_z_st <- function(z, m.par_st){
+  
+  ## linear predictor
+  
+  # below size ceiling
+  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
+  # above size ceiling
+  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
+  
+  # impose ceiling and backtransform from logit
+  p <- ifelse(z <= Uz1
+              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
+              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
+  )
+  
+  ## output
+  return( unname(p) )
+  
+  # ## back transform from logit
+  # p <- 1/(1+exp(-linear.p))
+}
+
+### growth: G(z', z, t)
+
+G_z1zt_st <- function(z1, z, t, m.par_st){
+  
+  ## based on growth regression coefficients, define mu and sigma of growth PDF
+  # below size ceiling
+  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
+  # above size ceiling
+  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
+  
+  sig <- m.par_st['grow.sd']
+  
+  ## calculate growth PDF
+  # have to loop b/c it's a PDF, not a probability
+  p.den.grow <- c()
+  for(q in 1:length(z1)){
+    p.den.grow[q] <- ifelse(z <= Uz1
+                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
+                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
+    )
+  }
+  
+  ## output
+  return(p.den.grow)
+  
+}
+### touch dynamics: T(t', t)
+
+T_t1t_st <- function(t1, t, m.par_st){
+  
+  p.den.touch <- dbeta(t1
+                       , shape1 = 2
+                       , shape2 = 50
+  )
+  
+  ## output
+  return(p.den.touch)
+}
+
+### prob reproduce: p_bz
+
+p_bz_st <- function(z, t, m.par_st){
+  ### convert z to v
+  v <- ifelse(z <= Uz1
+              , z * 131.18 - 152.52 # below ceiling
+              , Uz1 * 131.18 - 152.52 # above ceiling
+  )
+  
+  # linear predictor
+  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+  
+  # back transform from logit
+  p <- 1/(1+exp(-linear.p))
+  
+  # output
+  return( unname(p) )
+}
+
+
+### fecundity: b_z
+
+b_z <- function(z){
+  # from Strathmann
+  
+  p.bz <- ifelse(z <= Uz1
+                 , 0.147 * (10 * z)^2.74
+                 , 0.147 * (10 * Uz1)^2.74
+  )
+  
+  return(p.bz)
+}
+
+### recruit size dist: C_0(z')
+
+C_0z1 <- function(z1, m.par_st){
+  mu <- m.par_st['rcsz.int']
+  sig <- m.par_st['rcsz.sd']
+  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
+  return(p.den.rcsz)
+}
+
+### recruit touch dist: C_0(t')
+
+C_0t1 <- function(t1, m.par_st){
+  
+  p.den.rcst <- dbeta(t1 # recruits start with low crowd
+                      , shape1 = 50
+                      , shape2 = 2
+  )
+  
+  # shp1 <- m.par_st['rcst.s1']
+  # shp2 <- m.par_st['rcst.s2']
+  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
+  
+  
+  return(p.den.rcst)
+}
+
+
+### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
+
+P_z1z <- function(z1, z, t1, t, m.par_st){
+  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
+  )
+}
+
+### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
+
+F_z1z <- function(z1, z, t1, t, m.par_st){
+  return(
+    unname(
+      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
+    )
+  )
+}
+
+
+### define K kernel
+k_st <- function(z1, t1,  z, t, m.par_st){
+  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
+}
+
+# ---- *slow, ~ 2 min* IPM size touch - aLrH: numerical implementation ----
+
+# following IPM book pg. 162-164 and SizeQualityExample.R
+
+### compute meshpoints
+mz <- 100 # number of size mesh points 
+mt <- 50  # number of touch mesh points
+Lz <- 0.1 # size lower bound
+Uz<- 10  # size upper bound
+Lt <- 0 # touch lower bound
+Ut <- 1 # touch upper bound
+hz <- (Uz-Lz)/mz # size mesh point breaks
+yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+ht <- (Ut-Lt)/mt # touch mesh point breaks
+yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+
+### compute 4D kernel and 2D iteration matrix
+
+
+
+# Function eta to put kernel values in their proper place in A
+eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+
+# matrix whose (i,j) entry is eta(ij)
+Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+
+# code modified from IPM book, Ch 6, SizeQualityExample.R
+A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+for(i in 1:mz){
+  for(j in 1:mt){
+    for(k in 1:mt){
+      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+      A[Eta[,k],Eta[i,j]]=kvals
+      Kvals[,k,i,j]=kvals
+      
+    }}
+  cat(i,"\n");
+}
+A<-hz*ht*A
+
+# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
+# 
+# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
+# 
+# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
+# dim(A) <- c(mz * mt, mz * mt)
+# A <- hz*ht*A
+
+### calculate Lambda, w, and v
+out <- domEig(A) # returns lambda and a vector proportional to w
+out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
+lam.stable <- out$lambda
+lam.stable.t <- out2$lambda
+w <- Re(matrix(out$w, mz, mt))
+w <- w/(hz*ht*sum(w))
+v <- Re(matrix(out2$w, mz, mt))
+v <- v/sum(v) 
+
+# ---- IPM size touch - aLrH: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aLrH <- matrix(v, mz, mt)
+stable.state_aLrH <- matrix(w, mz, mt) 
+stable.state_aLrH.vector <- apply(stable.state_aLrH, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aLrH*repro.val_aLrH)
+sens <- outer(repro.val_aLrH,stable.state_aLrH)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aLrH.vector/sum(stable.state_aLrH.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aLrH.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aLrH
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aLrH
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aLrH
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aLrH
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+# # ---- *slow, ~ 34 hrs* IPM size touch - aLrH: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
+# ~ aHrL ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aHrL: define kernel components ----
+
+# IPM book pg. 24-25
+
+### survival: s(z)
+
+s_z_st <- function(z, m.par_st){
+  
+  ## linear predictor
+  
+  # below size ceiling
+  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
+  # above size ceiling
+  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
+  
+  # impose ceiling and backtransform from logit
+  p <- ifelse(z <= Uz1
+              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
+              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
+  )
+  
+  ## output
+  return( unname(p) )
+  
+  # ## back transform from logit
+  # p <- 1/(1+exp(-linear.p))
+}
+
+### growth: G(z', z, t)
+
+G_z1zt_st <- function(z1, z, t, m.par_st){
+  
+  ## based on growth regression coefficients, define mu and sigma of growth PDF
+  # below size ceiling
+  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
+  # above size ceiling
+  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
+  
+  sig <- m.par_st['grow.sd']
+  
+  ## calculate growth PDF
+  # have to loop b/c it's a PDF, not a probability
+  p.den.grow <- c()
+  for(q in 1:length(z1)){
+    p.den.grow[q] <- ifelse(z <= Uz1
+                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
+                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
+    )
+  }
+  
+  ## output
+  return(p.den.grow)
+  
+}
+### touch dynamics: T(t', t)
+
+T_t1t_st <- function(t1, t, m.par_st){
+  
+  p.den.touch <- dbeta(t1
+                       , shape1 = 50
+                       , shape2 = 2
+  )
+  
+  ## output
+  return(p.den.touch)
+}
+
+### prob reproduce: p_bz
+
+p_bz_st <- function(z, t, m.par_st){
+  ### convert z to v
+  v <- ifelse(z <= Uz1
+              , z * 131.18 - 152.52 # below ceiling
+              , Uz1 * 131.18 - 152.52 # above ceiling
+  )
+  
+  # linear predictor
+  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+  
+  # back transform from logit
+  p <- 1/(1+exp(-linear.p))
+  
+  # output
+  return( unname(p) )
+}
+
+
+### fecundity: b_z
+
+b_z <- function(z){
+  # from Strathmann
+  
+  p.bz <- ifelse(z <= Uz1
+                 , 0.147 * (10 * z)^2.74
+                 , 0.147 * (10 * Uz1)^2.74
+  )
+  
+  return(p.bz)
+}
+
+### recruit size dist: C_0(z')
+
+C_0z1 <- function(z1, m.par_st){
+  mu <- m.par_st['rcsz.int']
+  sig <- m.par_st['rcsz.sd']
+  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
+  return(p.den.rcsz)
+}
+
+### recruit touch dist: C_0(t')
+
+C_0t1 <- function(t1, m.par_st){
+  
+  p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
+                      , shape1 = 2
+                      , shape2 = 50
+  )
+  
+  # shp1 <- m.par_st['rcst.s1']
+  # shp2 <- m.par_st['rcst.s2']
+  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
+  
+  
+  return(p.den.rcst)
+}
+
+
+### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
+
+P_z1z <- function(z1, z, t1, t, m.par_st){
+  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
+  )
+}
+
+### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
+
+F_z1z <- function(z1, z, t1, t, m.par_st){
+  return(
+    unname(
+      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
+    )
+  )
+}
+
+
+### define K kernel
+k_st <- function(z1, t1,  z, t, m.par_st){
+  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
+}
+
+# ---- *slow, ~ 2 min* IPM size touch - aHrL: numerical implementation ----
+
+# following IPM book pg. 162-164 and SizeQualityExample.R
+
+### compute meshpoints
+mz <- 100 # number of size mesh points 
+mt <- 50  # number of touch mesh points
+Lz <- 0.1 # size lower bound
+Uz<- 10  # size upper bound
+Lt <- 0 # touch lower bound
+Ut <- 1 # touch upper bound
+hz <- (Uz-Lz)/mz # size mesh point breaks
+yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+ht <- (Ut-Lt)/mt # touch mesh point breaks
+yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+
+### compute 4D kernel and 2D iteration matrix
+
+
+
+# Function eta to put kernel values in their proper place in A
+eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+
+# matrix whose (i,j) entry is eta(ij)
+Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+
+# code modified from IPM book, Ch 6, SizeQualityExample.R
+A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+for(i in 1:mz){
+  for(j in 1:mt){
+    for(k in 1:mt){
+      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+      A[Eta[,k],Eta[i,j]]=kvals
+      Kvals[,k,i,j]=kvals
+      
+    }}
+  cat(i,"\n");
+}
+A<-hz*ht*A
+
+# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
+# 
+# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
+# 
+# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
+# dim(A) <- c(mz * mt, mz * mt)
+# A <- hz*ht*A
+
+### calculate Lambda, w, and v
+out <- domEig(A) # returns lambda and a vector proportional to w
+out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
+lam.stable <- out$lambda
+lam.stable.t <- out2$lambda
+w <- Re(matrix(out$w, mz, mt))
+w <- w/(hz*ht*sum(w))
+v <- Re(matrix(out2$w, mz, mt))
+v <- v/sum(v) 
+
+# ---- IPM size touch - aHrL: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aHrL <- matrix(v, mz, mt)
+stable.state_aHrL <- matrix(w, mz, mt) 
+stable.state_aHrL.vector <- apply(stable.state_aHrL, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aHrL*repro.val_aHrL)
+sens <- outer(repro.val_aHrL,stable.state_aHrL)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aHrL.vector/sum(stable.state_aHrL.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aHrL.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aHrL
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aHrL
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aHrL
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aHrL
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+# # ---- *slow, ~ 34 hrs* IPM size touch - aHrL: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
+# ~ aHrH ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ---- IPM size touch - aHrH: define kernel components ----
+
+# IPM book pg. 24-25
+
+### survival: s(z)
+
+s_z_st <- function(z, m.par_st){
+  
+  ## linear predictor
+  
+  # below size ceiling
+  linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
+  # above size ceiling
+  linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
+  
+  # impose ceiling and backtransform from logit
+  p <- ifelse(z <= Uz1
+              , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
+              , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
+  )
+  
+  ## output
+  return( unname(p) )
+  
+  # ## back transform from logit
+  # p <- 1/(1+exp(-linear.p))
+}
+
+### growth: G(z', z, t)
+
+G_z1zt_st <- function(z1, z, t, m.par_st){
+  
+  ## based on growth regression coefficients, define mu and sigma of growth PDF
+  # below size ceiling
+  mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
+  # above size ceiling
+  mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
+  
+  sig <- m.par_st['grow.sd']
+  
+  ## calculate growth PDF
+  # have to loop b/c it's a PDF, not a probability
+  p.den.grow <- c()
+  for(q in 1:length(z1)){
+    p.den.grow[q] <- ifelse(z <= Uz1
+                            , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
+                            , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
+    )
+  }
+  
+  ## output
+  return(p.den.grow)
+  
+}
+### touch dynamics: T(t', t)
+
+T_t1t_st <- function(t1, t, m.par_st){
+  
+  p.den.touch <- dbeta(t1
+                       , shape1 = 50
+                       , shape2 = 2
+  )
+  
+  ## output
+  return(p.den.touch)
+}
+
+### prob reproduce: p_bz
+
+p_bz_st <- function(z, t, m.par_st){
+  ### convert z to v
+  v <- ifelse(z <= Uz1
+              , z * 131.18 - 152.52 # below ceiling
+              , Uz1 * 131.18 - 152.52 # above ceiling
+  )
+  
+  # linear predictor
+  linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+  
+  # back transform from logit
+  p <- 1/(1+exp(-linear.p))
+  
+  # output
+  return( unname(p) )
+}
+
+
+### fecundity: b_z
+
+b_z <- function(z){
+  # from Strathmann
+  
+  p.bz <- ifelse(z <= Uz1
+                 , 0.147 * (10 * z)^2.74
+                 , 0.147 * (10 * Uz1)^2.74
+  )
+  
+  return(p.bz)
+}
+
+### recruit size dist: C_0(z')
+
+C_0z1 <- function(z1, m.par_st){
+  mu <- m.par_st['rcsz.int']
+  sig <- m.par_st['rcsz.sd']
+  p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
+  return(p.den.rcsz)
+}
+
+### recruit touch dist: C_0(t')
+
+C_0t1 <- function(t1, m.par_st){
+  
+  p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
+                      , shape1 = 50
+                      , shape2 = 2
+  )
+  
+  # shp1 <- m.par_st['rcst.s1']
+  # shp2 <- m.par_st['rcst.s2']
+  # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
+  
+  
+  return(p.den.rcst)
+}
+
+
+### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
+
+P_z1z <- function(z1, z, t1, t, m.par_st){
+  return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
+  )
+}
+
+### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
+
+F_z1z <- function(z1, z, t1, t, m.par_st){
+  return(
+    unname(
+      s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
+    )
+  )
+}
+
+
+### define K kernel
+k_st <- function(z1, t1,  z, t, m.par_st){
+  P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
+}
+
+# ---- *slow, ~ 2 min* IPM size touch - aHrH: numerical implementation ----
+
+# following IPM book pg. 162-164 and SizeQualityExample.R
+
+### compute meshpoints
+mz <- 100 # number of size mesh points 
+mt <- 50  # number of touch mesh points
+Lz <- 0.1 # size lower bound
+Uz<- 10  # size upper bound
+Lt <- 0 # touch lower bound
+Ut <- 1 # touch upper bound
+hz <- (Uz-Lz)/mz # size mesh point breaks
+yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+ht <- (Ut-Lt)/mt # touch mesh point breaks
+yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+
+### compute 4D kernel and 2D iteration matrix
+
+
+
+# Function eta to put kernel values in their proper place in A
+eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+
+# matrix whose (i,j) entry is eta(ij)
+Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+
+# code modified from IPM book, Ch 6, SizeQualityExample.R
+A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+for(i in 1:mz){
+  for(j in 1:mt){
+    for(k in 1:mt){
+      kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+      A[Eta[,k],Eta[i,j]]=kvals
+      Kvals[,k,i,j]=kvals
+      
+    }}
+  cat(i,"\n");
+}
+A<-hz*ht*A
+
+# # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
+# 
+# Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
+# 
+# A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
+# dim(A) <- c(mz * mt, mz * mt)
+# A <- hz*ht*A
+
+### calculate Lambda, w, and v
+out <- domEig(A) # returns lambda and a vector proportional to w
+out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
+lam.stable <- out$lambda
+lam.stable.t <- out2$lambda
+w <- Re(matrix(out$w, mz, mt))
+w <- w/(hz*ht*sum(w))
+v <- Re(matrix(out2$w, mz, mt))
+v <- v/sum(v) 
+
+# ---- IPM size touch - aHrH: perturbation analysis ----
+
+### Compute elasticity matrix 
+repro.val_aHrH <- matrix(v, mz, mt)
+stable.state_aHrH <- matrix(w, mz, mt) 
+stable.state_aHrH.vector <- apply(stable.state_aHrH, 1, sum)
+v.dot.w <- sum(hz*ht*stable.state_aHrH*repro.val_aHrH)
+sens <- outer(repro.val_aHrH,stable.state_aHrH)/v.dot.w
+elas <- sens*Kvals/lam.stable
+
+### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+
+### Checks
+cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+
+### Plots
+
+## stable size distribution
+
+plot(yz
+     , (stable.state_aHrH.vector/sum(stable.state_aHrH.vector))*10
+     , xlab = "Operculum length, mm"
+     , ylab = "Frequency"
+     , type = "l"
+     , ylim = c(0, 1)
+)
+
+# # code following IPM book (I modified this to make it a probability)
+# plot(yz
+#      , stable.state_aHrH.vector
+#      , xlab = "Size x"
+#      , ylab = "Frequency"
+#      , type = "l"
+# )
+
+
+
+
+## stable size and crowding distribution
+image(yz
+      , yt
+      , stable.state_aHrH
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , stable.state_aHrH
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## reproductive value
+image(yz
+      , yt
+      , repro.val_aHrH
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , repro.val_aHrH
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+## total elasticity
+# image(yt
+#       , yz
+#       , t(total.elas)
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Crowding"
+#       , ylab = "Operculum length, mm"
+# )
+# contour(yt
+#         , yz
+#         , t(total.elas)
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+
+image(yz
+      , yt
+      , total.elas
+      , col = grey(seq(0.5, 1, length=100))
+      , xlab = "Operculum length, mm"
+      , ylab = "Crowding"
+)
+contour(yz
+        , yt
+        , total.elas
+        , add = TRUE
+        , nlevels = 6
+        , labcex = 0.8
+)
+
+# # ---- *slow, ~ 34 hrs* IPM size touch - aHrH: lambda CI ----
+# # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# 
+# # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# 
+# ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# boot.lam.st <- function(dataset, sample.index) {
+#   
+#   ### extract the data used to make this fit
+#   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+#   
+#   ### fit the functions
+#   
+#   ## survival
+#   mod.Surv <- glm(Surv ~ z
+#                   , family = binomial
+#                   , data = boot.data
+#   )
+#   
+#   ## growth
+#   
+#   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+#   
+#   #z.growth <- boot.data.growth$z
+#   mod.Grow_st <- lm(z1 ~ z * touch_pct
+#                     , data = boot.data.growth
+#                     
+#   )
+#   
+#   ## recruit size distribution
+#   mod.Rcsz <- lm(z ~ 1 
+#                  , data = rec
+#   )
+#   
+#   ### Store the estimated parameters
+#   
+#   m.par_st <- c(
+#     surv = coef(mod.Surv)
+#     , grow = coef(mod.Grow_st)
+#     , grow.sd = summary(mod.Grow_st)$sigma
+#     , rcsz = coef(mod.Rcsz)
+#     , rcsz.sd = summary(mod.Rcsz)$sigma
+#     , rcst = coef(betafit_t)
+#     , p.r = p.r.est
+#     , repr = coef(reprodyn.1b)
+#     #, U1 = U1
+#   )
+#   
+#   names(m.par_st) <- c(
+#     'surv.int'
+#     , 'surv.z'
+#     , 'grow.int'
+#     , 'grow.z'
+#     , 'grow.t'
+#     , 'grow.zt'
+#     , 'grow.sd'
+#     , 'rcsz.int'
+#     , 'rcsz.sd'
+#     , 'rcst.s1'
+#     , 'rcst.s2'
+#     , 'p.r'
+#     , 'repr.int' # model is for volume, NOT operc length
+#     , 'repr.t' # model is for volume, NOT operc length
+#     , 'repr.v' # v here b/c it's volume, NOT operc length
+#     #, 'U1'
+#   )
+#   
+#   ### implement IPM and calculate lambda
+#   # following IPM book pg. 162-164 and SizeQualityExample.R
+#   
+#   ## compute meshpoints
+#   mz <- 100 # number of size mesh points 
+#   mt <- 50  # number of touch mesh points
+#   Lz <- 0.1 # size lower bound
+#   Uz<- 10  # size upper bound
+#   Lt <- 0 # touch lower bound
+#   Ut <- 1 # touch upper bound
+#   hz <- (Uz-Lz)/mz # size mesh point breaks
+#   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+#   ht <- (Ut-Lt)/mt # touch mesh point breaks
+#   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+#   
+#   ## compute 4D kernel and 2D iteration matrix
+#   # Function eta to put kernel values in their proper place in A
+#   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+#   
+#   # matrix whose (i,j) entry is eta(ij)
+#   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+#   
+#   # code modified from IPM book, Ch 6, SizeQualityExample.R
+#   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+#   for(i in 1:mz){
+#     for(j in 1:mt){
+#       for(k in 1:mt){
+#         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#         A[Eta[,k],Eta[i,j]]=kvals
+#         Kvals[,k,i,j]=kvals
+#         
+#       }}
+#     cat(i,"\n");
+#   }
+#   A<-hz*ht*A
+#   
+#   out <- domEig(A) # returns lambda and a vector proportional to w
+#   lam.boot <- out$lambda
+#   cat(lam.boot, "\n")
+#   return(lam.boot)
+#   
+# }
+# 
+# ### do the bootstrap (code takes ~ X min to run)
+# starttime <- Sys.time()
+# boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+#                     R = 1000)
+# endtime <- Sys.time()
+# 
+# boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# 
+# 
+# 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# ~Graveyard~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aFrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# 
+# # ---- IPM size touch - aFrU: define kernel components ----
+# 
+# # IPM book pg. 24-25
+# 
+# ### survival: s(z)
+# 
+# s_z_st <- function(z, m.par_st){
+#   
+#   ## linear predictor
+#   
+#   # below size ceiling
+#   linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
+#   # above size ceiling
+#   linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
+#   
+#   # impose ceiling and backtransform from logit
+#   p <- ifelse(z <= Uz1
+#               , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
+#               , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
+#   )
+#   
+#   ## output
+#   return( unname(p) )
+#   
+#   # ## back transform from logit
+#   # p <- 1/(1+exp(-linear.p))
+# }
+# 
+# ### growth: G(z', z, t)
+# 
+# G_z1zt_st <- function(z1, z, t, m.par_st){
+#   
+#   ## based on growth regression coefficients, define mu and sigma of growth PDF
+#   # below size ceiling
+#   mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
+#   # above size ceiling
+#   mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
+#   
+#   sig <- m.par_st['grow.sd']
+#   
+#   ## calculate growth PDF
+#   # have to loop b/c it's a PDF, not a probability
+#   p.den.grow <- c()
+#   for(q in 1:length(z1)){
+#     p.den.grow[q] <- ifelse(z <= Uz1
+#                             , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
+#                             , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
+#     )
+#   }
+#   
+#   ## output
+#   return(p.den.grow)
+#   
+# }
+# ### touch dynamics: T(t', t)
+# 
+# T_t1t_st <- function(t1, t, m.par_st){
+#   
+#   p.den.touch <- dbeta(t1
+#                        , shape1 = m.par_st['rcst.s1']
+#                        , shape2 = m.par_st['rcst.s2']
+#   )
+#   
+#   ## output
+#   return(p.den.touch)
+# }
+# 
+# ### prob reproduce: p_bz
+# 
+# p_bz_st <- function(z, t, m.par_st){
+#   ### convert z to v
+#   v <- ifelse(z <= Uz1
+#               , z * 131.18 - 152.52 # below ceiling
+#               , Uz1 * 131.18 - 152.52 # above ceiling
+#   )
+#   
+#   # linear predictor
+#   linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+#   
+#   # back transform from logit
+#   p <- 1/(1+exp(-linear.p))
+#   
+#   # output
+#   return( unname(p) )
+# }
+# 
+# 
+# ### fecundity: b_z
+# 
+# b_z <- function(z){
+#   # from Strathmann
+#   
+#   p.bz <- ifelse(z <= Uz1
+#                  , 0.147 * (10 * z)^2.74
+#                  , 0.147 * (10 * Uz1)^2.74
+#   )
+#   
+#   return(p.bz)
+# }
+# 
+# ### recruit size dist: C_0(z')
+# 
+# C_0z1 <- function(z1, m.par_st){
+#   mu <- m.par_st['rcsz.int']
+#   sig <- m.par_st['rcsz.sd']
+#   p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
+#   return(p.den.rcsz)
+# }
+# 
+# ### recruit touch dist: C_0(t')
+# 
+# C_0t1 <- function(t1, m.par_st){
+#   
+#   p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
+#                       , shape1 = 1
+#                       , shape2 = 1
+#   )
+#   
+#   # shp1 <- m.par_st['rcst.s1']
+#   # shp2 <- m.par_st['rcst.s2']
+#   # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
+#   
+#   
+#   return(p.den.rcst)
+# }
+# 
+# 
+# ### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
+# 
+# P_z1z <- function(z1, z, t1, t, m.par_st){
+#   return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
+#   )
+# }
+# 
+# ### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
+# 
+# F_z1z <- function(z1, z, t1, t, m.par_st){
+#   return(
+#     unname(
+#       s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
+#     )
+#   )
+# }
+# 
+# 
+# ### define K kernel
+# k_st <- function(z1, t1,  z, t, m.par_st){
+#   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
+# }
+# 
+# # ---- *slow, ~ 2 min* IPM size touch - aFrU: numerical implementation ----
+# 
+# # following IPM book pg. 162-164 and SizeQualityExample.R
+# 
+# ### compute meshpoints
+# mz <- 100 # number of size mesh points 
+# mt <- 50  # number of touch mesh points
+# Lz <- 0.1 # size lower bound
+# Uz<- 10  # size upper bound
+# Lt <- 0 # touch lower bound
+# Ut <- 1 # touch upper bound
+# hz <- (Uz-Lz)/mz # size mesh point breaks
+# yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+# ht <- (Ut-Lt)/mt # touch mesh point breaks
+# yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+# 
+# ### compute 4D kernel and 2D iteration matrix
+# 
+# 
+# 
+# # Function eta to put kernel values in their proper place in A
+# eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+# 
+# # matrix whose (i,j) entry is eta(ij)
+# Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+# 
+# # code modified from IPM book, Ch 6, SizeQualityExample.R
+# A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+# for(i in 1:mz){
+#   for(j in 1:mt){
+#     for(k in 1:mt){
+#       kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#       A[Eta[,k],Eta[i,j]]=kvals
+#       Kvals[,k,i,j]=kvals
+#       
+#     }}
+#   cat(i,"\n");
+# }
+# A<-hz*ht*A
+# 
+# # # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
+# # 
+# # Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
+# # 
+# # A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
+# # dim(A) <- c(mz * mt, mz * mt)
+# # A <- hz*ht*A
+# 
+# ### calculate Lambda, w, and v
+# out <- domEig(A) # returns lambda and a vector proportional to w
+# out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
+# lam.stable <- out$lambda
+# lam.stable.t <- out2$lambda
+# w <- Re(matrix(out$w, mz, mt))
+# w <- w/(hz*ht*sum(w))
+# v <- Re(matrix(out2$w, mz, mt))
+# v <- v/sum(v) 
+# 
+# # ---- IPM size touch - aFrU: perturbation analysis ----
+# 
+# ### Compute elasticity matrix 
+# repro.val_aFrU <- matrix(v, mz, mt)
+# stable.state_aFrU <- matrix(w, mz, mt) 
+# stable.state_aFrU.vector <- apply(stable.state_aFrU, 1, sum)
+# 
+# v.dot.w <- sum(hz*ht*stable.state_aFrU*repro.val_aFrU)
+# sens <- outer(repro.val_aFrU,stable.state_aFrU)/v.dot.w
+# elas <- sens*Kvals/lam.stable
+# 
+# ### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+# total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+# 
+# ### Checks
+# cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+# cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+# 
+# ### Plots
+# 
+# ## stable size distribution
+# 
+# plot(yz
+#      , (stable.state_aFrU.vector/sum(stable.state_aFrU.vector))*10
+#      , xlab = "Operculum length, mm"
+#      , ylab = "Probability"
+#      , type = "l"
+#      , ylim = c(0, 1)
+# )
+# 
+# # # code following IPM book (I modified this to make it a probability)
+# # plot(yz
+# #      , stable.state_aFrU.vector
+# #      , xlab = "Size x"
+# #      , ylab = "Frequency"
+# #      , type = "l"
+# # )
+# 
+# # # stable size dist with small ones excluded
+# # plot(yz
+# #      , (stable.state_aFrU.vector/sum(stable.state_aFrU.vector))*10
+# #      , xlab = "Operculum length, mm"
+# #      , ylab = "Probability"
+# #      , type = "l"
+# #      , ylim = c(0, 0.1)
+# #      , xlim = c(2.5, 10)
+# # )
+# 
+# 
+# ## stable size and crowding distribution
+# image(yz
+#       , yt
+#       , stable.state_aFrU
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , stable.state_aFrU
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# ## reproductive value
+# image(yz
+#       , yt
+#       , repro.val_aFrU
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , repro.val_aFrU
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# ## total elasticity
+# # image(yt
+# #       , yz
+# #       , t(total.elas)
+# #       , col = grey(seq(0.5, 1, length=100))
+# #       , xlab = "Crowding"
+# #       , ylab = "Operculum length, mm"
+# # )
+# # contour(yt
+# #         , yz
+# #         , t(total.elas)
+# #         , add = TRUE
+# #         , nlevels = 6
+# #         , labcex = 0.8
+# # )
+# 
+# image(yz
+#       , yt
+#       , total.elas
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , total.elas
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# # # ---- *slow, ~ 34 hrs* IPM size touch - aFrU: lambda CI ----
+# # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# # 
+# # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# # 
+# # ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# # boot.lam.st <- function(dataset, sample.index) {
+# #   
+# #   ### extract the data used to make this fit
+# #   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+# #   
+# #   ### fit the functions
+# #   
+# #   ## survival
+# #   mod.Surv <- glm(Surv ~ z
+# #                   , family = binomial
+# #                   , data = boot.data
+# #   )
+# #   
+# #   ## growth
+# #   
+# #   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+# #   
+# #   #z.growth <- boot.data.growth$z
+# #   mod.Grow_st <- lm(z1 ~ z * touch_pct
+# #                     , data = boot.data.growth
+# #                     
+# #   )
+# #   
+# #   ## recruit size distribution
+# #   mod.Rcsz <- lm(z ~ 1 
+# #                  , data = rec
+# #   )
+# #   
+# #   ### Store the estimated parameters
+# #   
+# #   m.par_st <- c(
+# #     surv = coef(mod.Surv)
+# #     , grow = coef(mod.Grow_st)
+# #     , grow.sd = summary(mod.Grow_st)$sigma
+# #     , rcsz = coef(mod.Rcsz)
+# #     , rcsz.sd = summary(mod.Rcsz)$sigma
+# #     , rcst = coef(betafit_t)
+# #     , p.r = p.r.est
+# #     , repr = coef(reprodyn.1b)
+# #     #, U1 = U1
+# #   )
+# #   
+# #   names(m.par_st) <- c(
+# #     'surv.int'
+# #     , 'surv.z'
+# #     , 'grow.int'
+# #     , 'grow.z'
+# #     , 'grow.t'
+# #     , 'grow.zt'
+# #     , 'grow.sd'
+# #     , 'rcsz.int'
+# #     , 'rcsz.sd'
+# #     , 'rcst.s1'
+# #     , 'rcst.s2'
+# #     , 'p.r'
+# #     , 'repr.int' # model is for volume, NOT operc length
+# #     , 'repr.t' # model is for volume, NOT operc length
+# #     , 'repr.v' # v here b/c it's volume, NOT operc length
+# #     #, 'U1'
+# #   )
+# #   
+# #   ### implement IPM and calculate lambda
+# #   # following IPM book pg. 162-164 and SizeQualityExample.R
+# #   
+# #   ## compute meshpoints
+# #   mz <- 100 # number of size mesh points 
+# #   mt <- 50  # number of touch mesh points
+# #   Lz <- 0.1 # size lower bound
+# #   Uz<- 10  # size upper bound
+# #   Lt <- 0 # touch lower bound
+# #   Ut <- 1 # touch upper bound
+# #   hz <- (Uz-Lz)/mz # size mesh point breaks
+# #   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+# #   ht <- (Ut-Lt)/mt # touch mesh point breaks
+# #   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+# #   
+# #   ## compute 4D kernel and 2D iteration matrix
+# #   # Function eta to put kernel values in their proper place in A
+# #   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+# #   
+# #   # matrix whose (i,j) entry is eta(ij)
+# #   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+# #   
+# #   # code modified from IPM book, Ch 6, SizeQualityExample.R
+# #   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+# #   for(i in 1:mz){
+# #     for(j in 1:mt){
+# #       for(k in 1:mt){
+# #         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+# #         A[Eta[,k],Eta[i,j]]=kvals
+# #         Kvals[,k,i,j]=kvals
+# #         
+# #       }}
+# #     cat(i,"\n");
+# #   }
+# #   A<-hz*ht*A
+# #   
+# #   out <- domEig(A) # returns lambda and a vector proportional to w
+# #   lam.boot <- out$lambda
+# #   cat(lam.boot, "\n")
+# #   return(lam.boot)
+# #   
+# # }
+# # 
+# # ### do the bootstrap (code takes ~ X min to run)
+# # starttime <- Sys.time()
+# # boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+# #                     R = 1000)
+# # endtime <- Sys.time()
+# # 
+# # boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# # 
+# # 
+# # 
+# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aUrM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# # ---- IPM size touch - aUrM: define kernel components ----
+# 
+# # IPM book pg. 24-25
+# 
+# ### survival: s(z)
+# 
+# s_z_st <- function(z, m.par_st){
+#   
+#   ## linear predictor
+#   
+#   # below size ceiling
+#   linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
+#   # above size ceiling
+#   linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
+#   
+#   # impose ceiling and backtransform from logit
+#   p <- ifelse(z <= Uz1
+#               , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
+#               , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
+#   )
+#   
+#   ## output
+#   return( unname(p) )
+#   
+#   # ## back transform from logit
+#   # p <- 1/(1+exp(-linear.p))
+# }
+# 
+# ### growth: G(z', z, t)
+# 
+# G_z1zt_st <- function(z1, z, t, m.par_st){
+#   
+#   ## based on growth regression coefficients, define mu and sigma of growth PDF
+#   # below size ceiling
+#   mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
+#   # above size ceiling
+#   mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
+#   
+#   sig <- m.par_st['grow.sd']
+#   
+#   ## calculate growth PDF
+#   # have to loop b/c it's a PDF, not a probability
+#   p.den.grow <- c()
+#   for(q in 1:length(z1)){
+#     p.den.grow[q] <- ifelse(z <= Uz1
+#                             , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
+#                             , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
+#     )
+#   }
+#   
+#   ## output
+#   return(p.den.grow)
+#   
+# }
+# ### touch dynamics: T(t', t)
+# 
+# T_t1t_st <- function(t1, t, m.par_st){
+#   
+#   p.den.touch <- dbeta(t1
+#                        , shape1 = 1
+#                        , shape2 = 1
+#   )
+#   
+#   ## output
+#   return(p.den.touch)
+# }
+# 
+# ### prob reproduce: p_bz
+# 
+# p_bz_st <- function(z, t, m.par_st){
+#   ### convert z to v
+#   v <- ifelse(z <= Uz1
+#               , z * 131.18 - 152.52 # below ceiling
+#               , Uz1 * 131.18 - 152.52 # above ceiling
+#   )
+#   
+#   # linear predictor
+#   linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+#   
+#   # back transform from logit
+#   p <- 1/(1+exp(-linear.p))
+#   
+#   # output
+#   return( unname(p) )
+# }
+# 
+# 
+# ### fecundity: b_z
+# 
+# b_z <- function(z){
+#   # from Strathmann
+#   
+#   p.bz <- ifelse(z <= Uz1
+#                  , 0.147 * (10 * z)^2.74
+#                  , 0.147 * (10 * Uz1)^2.74
+#   )
+#   
+#   return(p.bz)
+# }
+# 
+# ### recruit size dist: C_0(z')
+# 
+# C_0z1 <- function(z1, m.par_st){
+#   mu <- m.par_st['rcsz.int']
+#   sig <- m.par_st['rcsz.sd']
+#   p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
+#   return(p.den.rcsz)
+# }
+# 
+# ### recruit touch dist: C_0(t')
+# 
+# C_0t1 <- function(t1, m.par_st){
+#   
+#   p.den.rcst <- dbeta(t1 # recruits start with low crowd
+#                       , shape1 = 300
+#                       , shape2 = 300
+#   )
+#   
+#   # shp1 <- m.par_st['rcst.s1']
+#   # shp2 <- m.par_st['rcst.s2']
+#   # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
+#   
+#   
+#   return(p.den.rcst)
+# }
+# 
+# 
+# ### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
+# 
+# P_z1z <- function(z1, z, t1, t, m.par_st){
+#   return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
+#   )
+# }
+# 
+# ### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
+# 
+# F_z1z <- function(z1, z, t1, t, m.par_st){
+#   return(
+#     unname(
+#       s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
+#     )
+#   )
+# }
+# 
+# 
+# ### define K kernel
+# k_st <- function(z1, t1,  z, t, m.par_st){
+#   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
+# }
+# 
+# # ---- *slow, ~ 2 min* IPM size touch - aUrM: numerical implementation ----
+# 
+# # following IPM book pg. 162-164 and SizeQualityExample.R
+# 
+# ### compute meshpoints
+# mz <- 100 # number of size mesh points 
+# mt <- 50  # number of touch mesh points
+# Lz <- 0.1 # size lower bound
+# Uz<- 10  # size upper bound
+# Lt <- 0 # touch lower bound
+# Ut <- 1 # touch upper bound
+# hz <- (Uz-Lz)/mz # size mesh point breaks
+# yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+# ht <- (Ut-Lt)/mt # touch mesh point breaks
+# yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+# 
+# ### compute 4D kernel and 2D iteration matrix
+# 
+# 
+# 
+# # Function eta to put kernel values in their proper place in A
+# eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+# 
+# # matrix whose (i,j) entry is eta(ij)
+# Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+# 
+# # code modified from IPM book, Ch 6, SizeQualityExample.R
+# A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+# for(i in 1:mz){
+#   for(j in 1:mt){
+#     for(k in 1:mt){
+#       kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#       A[Eta[,k],Eta[i,j]]=kvals
+#       Kvals[,k,i,j]=kvals
+#       
+#     }}
+#   cat(i,"\n");
+# }
+# A<-hz*ht*A
+# 
+# # # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
+# # 
+# # Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
+# # 
+# # A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
+# # dim(A) <- c(mz * mt, mz * mt)
+# # A <- hz*ht*A
+# 
+# ### calculate Lambda, w, and v
+# out <- domEig(A) # returns lambda and a vector proportional to w
+# out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
+# lam.stable <- out$lambda
+# lam.stable.t <- out2$lambda
+# w <- Re(matrix(out$w, mz, mt))
+# w <- w/(hz*ht*sum(w))
+# v <- Re(matrix(out2$w, mz, mt))
+# v <- v/sum(v) 
+# 
+# # ---- IPM size touch - aUrM: perturbation analysis ----
+# 
+# ### Compute elasticity matrix 
+# repro.val_aUrM <- matrix(v, mz, mt)
+# stable.state_aUrM <- matrix(w, mz, mt) 
+# stable.state_aUrM.vector <- apply(stable.state_aUrM, 1, sum)
+# v.dot.w <- sum(hz*ht*stable.state_aUrM*repro.val_aUrM)
+# sens <- outer(repro.val_aUrM,stable.state_aUrM)/v.dot.w
+# elas <- sens*Kvals/lam.stable
+# 
+# ### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+# total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+# 
+# ### Checks
+# cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+# cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+# 
+# ### Plots
+# 
+# ## stable size distribution
+# 
+# plot(yz
+#      , (stable.state_aUrM.vector/sum(stable.state_aUrM.vector))*10
+#      , xlab = "Operculum length, mm"
+#      , ylab = "Frequency"
+#      , type = "l"
+#      , ylim = c(0, 1)
+# )
+# 
+# # # code following IPM book (I modified this to make it a probability)
+# # plot(yz
+# #      , stable.state_aUrM.vector
+# #      , xlab = "Size x"
+# #      , ylab = "Frequency"
+# #      , type = "l"
+# # )
+# 
+# 
+# 
+# 
+# ## stable size and crowding distribution
+# image(yz
+#       , yt
+#       , stable.state_aUrM
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , stable.state_aUrM
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# ## reproductive value
+# image(yz
+#       , yt
+#       , repro.val_aUrM
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , repro.val_aUrM
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# ## total elasticity
+# # image(yt
+# #       , yz
+# #       , t(total.elas)
+# #       , col = grey(seq(0.5, 1, length=100))
+# #       , xlab = "Crowding"
+# #       , ylab = "Operculum length, mm"
+# # )
+# # contour(yt
+# #         , yz
+# #         , t(total.elas)
+# #         , add = TRUE
+# #         , nlevels = 6
+# #         , labcex = 0.8
+# # )
+# 
+# image(yz
+#       , yt
+#       , total.elas
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , total.elas
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# # # ---- *slow, ~ 34 hrs* IPM size touch - aUrM: lambda CI ----
+# # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# # 
+# # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# # 
+# # ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# # boot.lam.st <- function(dataset, sample.index) {
+# #   
+# #   ### extract the data used to make this fit
+# #   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+# #   
+# #   ### fit the functions
+# #   
+# #   ## survival
+# #   mod.Surv <- glm(Surv ~ z
+# #                   , family = binomial
+# #                   , data = boot.data
+# #   )
+# #   
+# #   ## growth
+# #   
+# #   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+# #   
+# #   #z.growth <- boot.data.growth$z
+# #   mod.Grow_st <- lm(z1 ~ z * touch_pct
+# #                     , data = boot.data.growth
+# #                     
+# #   )
+# #   
+# #   ## recruit size distribution
+# #   mod.Rcsz <- lm(z ~ 1 
+# #                  , data = rec
+# #   )
+# #   
+# #   ### Store the estimated parameters
+# #   
+# #   m.par_st <- c(
+# #     surv = coef(mod.Surv)
+# #     , grow = coef(mod.Grow_st)
+# #     , grow.sd = summary(mod.Grow_st)$sigma
+# #     , rcsz = coef(mod.Rcsz)
+# #     , rcsz.sd = summary(mod.Rcsz)$sigma
+# #     , rcst = coef(betafit_t)
+# #     , p.r = p.r.est
+# #     , repr = coef(reprodyn.1b)
+# #     #, U1 = U1
+# #   )
+# #   
+# #   names(m.par_st) <- c(
+# #     'surv.int'
+# #     , 'surv.z'
+# #     , 'grow.int'
+# #     , 'grow.z'
+# #     , 'grow.t'
+# #     , 'grow.zt'
+# #     , 'grow.sd'
+# #     , 'rcsz.int'
+# #     , 'rcsz.sd'
+# #     , 'rcst.s1'
+# #     , 'rcst.s2'
+# #     , 'p.r'
+# #     , 'repr.int' # model is for volume, NOT operc length
+# #     , 'repr.t' # model is for volume, NOT operc length
+# #     , 'repr.v' # v here b/c it's volume, NOT operc length
+# #     #, 'U1'
+# #   )
+# #   
+# #   ### implement IPM and calculate lambda
+# #   # following IPM book pg. 162-164 and SizeQualityExample.R
+# #   
+# #   ## compute meshpoints
+# #   mz <- 100 # number of size mesh points 
+# #   mt <- 50  # number of touch mesh points
+# #   Lz <- 0.1 # size lower bound
+# #   Uz<- 10  # size upper bound
+# #   Lt <- 0 # touch lower bound
+# #   Ut <- 1 # touch upper bound
+# #   hz <- (Uz-Lz)/mz # size mesh point breaks
+# #   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+# #   ht <- (Ut-Lt)/mt # touch mesh point breaks
+# #   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+# #   
+# #   ## compute 4D kernel and 2D iteration matrix
+# #   # Function eta to put kernel values in their proper place in A
+# #   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+# #   
+# #   # matrix whose (i,j) entry is eta(ij)
+# #   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+# #   
+# #   # code modified from IPM book, Ch 6, SizeQualityExample.R
+# #   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+# #   for(i in 1:mz){
+# #     for(j in 1:mt){
+# #       for(k in 1:mt){
+# #         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+# #         A[Eta[,k],Eta[i,j]]=kvals
+# #         Kvals[,k,i,j]=kvals
+# #         
+# #       }}
+# #     cat(i,"\n");
+# #   }
+# #   A<-hz*ht*A
+# #   
+# #   out <- domEig(A) # returns lambda and a vector proportional to w
+# #   lam.boot <- out$lambda
+# #   cat(lam.boot, "\n")
+# #   return(lam.boot)
+# #   
+# # }
+# # 
+# # ### do the bootstrap (code takes ~ X min to run)
+# # starttime <- Sys.time()
+# # boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+# #                     R = 1000)
+# # endtime <- Sys.time()
+# # 
+# # boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# # 
+# # 
+
+# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aMrM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# # ---- IPM size touch - aMrM: define kernel components ----
+# 
+# # IPM book pg. 24-25
+# 
+# ### survival: s(z)
+# 
+# s_z_st <- function(z, m.par_st){
+#   
+#   ## linear predictor
+#   
+#   # below size ceiling
+#   linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
+#   # above size ceiling
+#   linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
+#   
+#   # impose ceiling and backtransform from logit
+#   p <- ifelse(z <= Uz1
+#               , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
+#               , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
+#   )
+#   
+#   ## output
+#   return( unname(p) )
+#   
+#   # ## back transform from logit
+#   # p <- 1/(1+exp(-linear.p))
+# }
+# 
+# ### growth: G(z', z, t)
+# 
+# G_z1zt_st <- function(z1, z, t, m.par_st){
+#   
+#   ## based on growth regression coefficients, define mu and sigma of growth PDF
+#   # below size ceiling
+#   mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
+#   # above size ceiling
+#   mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
+#   
+#   sig <- m.par_st['grow.sd']
+#   
+#   ## calculate growth PDF
+#   # have to loop b/c it's a PDF, not a probability
+#   p.den.grow <- c()
+#   for(q in 1:length(z1)){
+#     p.den.grow[q] <- ifelse(z <= Uz1
+#                             , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
+#                             , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
+#     )
+#   }
+#   
+#   ## output
+#   return(p.den.grow)
+#   
+# }
+# ### touch dynamics: T(t', t)
+# 
+# T_t1t_st <- function(t1, t, m.par_st){
+#   
+#   p.den.touch <- dbeta(t1
+#                        , shape1 = 300
+#                        , shape2 = 300
+#   )
+#   
+#   ## output
+#   return(p.den.touch)
+# }
+# 
+# ### prob reproduce: p_bz
+# 
+# p_bz_st <- function(z, t, m.par_st){
+#   ### convert z to v
+#   v <- ifelse(z <= Uz1
+#               , z * 131.18 - 152.52 # below ceiling
+#               , Uz1 * 131.18 - 152.52 # above ceiling
+#   )
+#   
+#   # linear predictor
+#   linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+#   
+#   # back transform from logit
+#   p <- 1/(1+exp(-linear.p))
+#   
+#   # output
+#   return( unname(p) )
+# }
+# 
+# 
+# ### fecundity: b_z
+# 
+# b_z <- function(z){
+#   # from Strathmann
+#   
+#   p.bz <- ifelse(z <= Uz1
+#                  , 0.147 * (10 * z)^2.74
+#                  , 0.147 * (10 * Uz1)^2.74
+#   )
+#   
+#   return(p.bz)
+# }
+# 
+# ### recruit size dist: C_0(z')
+# 
+# C_0z1 <- function(z1, m.par_st){
+#   mu <- m.par_st['rcsz.int']
+#   sig <- m.par_st['rcsz.sd']
+#   p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
+#   return(p.den.rcsz)
+# }
+# 
+# ### recruit touch dist: C_0(t')
+# 
+# C_0t1 <- function(t1, m.par_st){
+#   
+#   p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
+#                       , shape1 = 300
+#                       , shape2 = 300
+#   )
+#   
+#   # shp1 <- m.par_st['rcst.s1']
+#   # shp2 <- m.par_st['rcst.s2']
+#   # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
+#   
+#   
+#   return(p.den.rcst)
+# }
+# 
+# 
+# ### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
+# 
+# P_z1z <- function(z1, z, t1, t, m.par_st){
+#   return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
+#   )
+# }
+# 
+# ### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
+# 
+# F_z1z <- function(z1, z, t1, t, m.par_st){
+#   return(
+#     unname(
+#       s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
+#     )
+#   )
+# }
+# 
+# 
+# ### define K kernel
+# k_st <- function(z1, t1,  z, t, m.par_st){
+#   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
+# }
+# 
+# # ---- *slow, ~ 2 min* IPM size touch - aMrM: numerical implementation ----
+# 
+# # following IPM book pg. 162-164 and SizeQualityExample.R
+# 
+# ### compute meshpoints
+# mz <- 100 # number of size mesh points 
+# mt <- 50  # number of touch mesh points
+# Lz <- 0.1 # size lower bound
+# Uz<- 10  # size upper bound
+# Lt <- 0 # touch lower bound
+# Ut <- 1 # touch upper bound
+# hz <- (Uz-Lz)/mz # size mesh point breaks
+# yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+# ht <- (Ut-Lt)/mt # touch mesh point breaks
+# yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+# 
+# ### compute 4D kernel and 2D iteration matrix
+# 
+# 
+# 
+# # Function eta to put kernel values in their proper place in A
+# eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+# 
+# # matrix whose (i,j) entry is eta(ij)
+# Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+# 
+# # code modified from IPM book, Ch 6, SizeQualityExample.R
+# A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+# for(i in 1:mz){
+#   for(j in 1:mt){
+#     for(k in 1:mt){
+#       kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#       A[Eta[,k],Eta[i,j]]=kvals
+#       Kvals[,k,i,j]=kvals
+#       
+#     }}
+#   cat(i,"\n");
+# }
+# A<-hz*ht*A
+# 
+# # # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
+# # 
+# # Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
+# # 
+# # A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
+# # dim(A) <- c(mz * mt, mz * mt)
+# # A <- hz*ht*A
+# 
+# ### calculate Lambda, w, and v
+# out <- domEig(A) # returns lambda and a vector proportional to w
+# out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
+# lam.stable <- out$lambda
+# lam.stable.t <- out2$lambda
+# w <- Re(matrix(out$w, mz, mt))
+# w <- w/(hz*ht*sum(w))
+# v <- Re(matrix(out2$w, mz, mt))
+# v <- v/sum(v) 
+# 
+# # ---- IPM size touch - aMrM: perturbation analysis ----
+# 
+# ### Compute elasticity matrix 
+# repro.val_aMrM <- matrix(v, mz, mt)
+# stable.state_aMrM <- matrix(w, mz, mt) 
+# stable.state_aMrM.vector <- apply(stable.state_aMrM, 1, sum)
+# v.dot.w <- sum(hz*ht*stable.state_aMrM*repro.val_aMrM)
+# sens <- outer(repro.val_aMrM,stable.state_aMrM)/v.dot.w
+# elas <- sens*Kvals/lam.stable
+# 
+# ### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+# total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+# 
+# ### Checks
+# cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+# cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+# 
+# ### Plots
+# 
+# ## stable size distribution
+# 
+# plot(yz
+#      , (stable.state_aMrM.vector/sum(stable.state_aMrM.vector))*10
+#      , xlab = "Operculum length, mm"
+#      , ylab = "Frequency"
+#      , type = "l"
+#      , ylim = c(0, 1)
+# )
+# 
+# # # code following IPM book (I modified this to make it a probability)
+# # plot(yz
+# #      , stable.state_aMrM.vector
+# #      , xlab = "Size x"
+# #      , ylab = "Frequency"
+# #      , type = "l"
+# # )
+# 
+# 
+# 
+# 
+# ## stable size and crowding distribution
+# image(yz
+#       , yt
+#       , stable.state_aMrM
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , stable.state_aMrM
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# ## reproductive value
+# image(yz
+#       , yt
+#       , repro.val_aMrM
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , repro.val_aMrM
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# ## total elasticity
+# # image(yt
+# #       , yz
+# #       , t(total.elas)
+# #       , col = grey(seq(0.5, 1, length=100))
+# #       , xlab = "Crowding"
+# #       , ylab = "Operculum length, mm"
+# # )
+# # contour(yt
+# #         , yz
+# #         , t(total.elas)
+# #         , add = TRUE
+# #         , nlevels = 6
+# #         , labcex = 0.8
+# # )
+# 
+# image(yz
+#       , yt
+#       , total.elas
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , total.elas
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# # # ---- *slow, ~ 34 hrs* IPM size touch - aMrM: lambda CI ----
+# # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# # 
+# # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# # 
+# # ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# # boot.lam.st <- function(dataset, sample.index) {
+# #   
+# #   ### extract the data used to make this fit
+# #   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+# #   
+# #   ### fit the functions
+# #   
+# #   ## survival
+# #   mod.Surv <- glm(Surv ~ z
+# #                   , family = binomial
+# #                   , data = boot.data
+# #   )
+# #   
+# #   ## growth
+# #   
+# #   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+# #   
+# #   #z.growth <- boot.data.growth$z
+# #   mod.Grow_st <- lm(z1 ~ z * touch_pct
+# #                     , data = boot.data.growth
+# #                     
+# #   )
+# #   
+# #   ## recruit size distribution
+# #   mod.Rcsz <- lm(z ~ 1 
+# #                  , data = rec
+# #   )
+# #   
+# #   ### Store the estimated parameters
+# #   
+# #   m.par_st <- c(
+# #     surv = coef(mod.Surv)
+# #     , grow = coef(mod.Grow_st)
+# #     , grow.sd = summary(mod.Grow_st)$sigma
+# #     , rcsz = coef(mod.Rcsz)
+# #     , rcsz.sd = summary(mod.Rcsz)$sigma
+# #     , rcst = coef(betafit_t)
+# #     , p.r = p.r.est
+# #     , repr = coef(reprodyn.1b)
+# #     #, U1 = U1
+# #   )
+# #   
+# #   names(m.par_st) <- c(
+# #     'surv.int'
+# #     , 'surv.z'
+# #     , 'grow.int'
+# #     , 'grow.z'
+# #     , 'grow.t'
+# #     , 'grow.zt'
+# #     , 'grow.sd'
+# #     , 'rcsz.int'
+# #     , 'rcsz.sd'
+# #     , 'rcst.s1'
+# #     , 'rcst.s2'
+# #     , 'p.r'
+# #     , 'repr.int' # model is for volume, NOT operc length
+# #     , 'repr.t' # model is for volume, NOT operc length
+# #     , 'repr.v' # v here b/c it's volume, NOT operc length
+# #     #, 'U1'
+# #   )
+# #   
+# #   ### implement IPM and calculate lambda
+# #   # following IPM book pg. 162-164 and SizeQualityExample.R
+# #   
+# #   ## compute meshpoints
+# #   mz <- 100 # number of size mesh points 
+# #   mt <- 50  # number of touch mesh points
+# #   Lz <- 0.1 # size lower bound
+# #   Uz<- 10  # size upper bound
+# #   Lt <- 0 # touch lower bound
+# #   Ut <- 1 # touch upper bound
+# #   hz <- (Uz-Lz)/mz # size mesh point breaks
+# #   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+# #   ht <- (Ut-Lt)/mt # touch mesh point breaks
+# #   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+# #   
+# #   ## compute 4D kernel and 2D iteration matrix
+# #   # Function eta to put kernel values in their proper place in A
+# #   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+# #   
+# #   # matrix whose (i,j) entry is eta(ij)
+# #   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+# #   
+# #   # code modified from IPM book, Ch 6, SizeQualityExample.R
+# #   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+# #   for(i in 1:mz){
+# #     for(j in 1:mt){
+# #       for(k in 1:mt){
+# #         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+# #         A[Eta[,k],Eta[i,j]]=kvals
+# #         Kvals[,k,i,j]=kvals
+# #         
+# #       }}
+# #     cat(i,"\n");
+# #   }
+# #   A<-hz*ht*A
+# #   
+# #   out <- domEig(A) # returns lambda and a vector proportional to w
+# #   lam.boot <- out$lambda
+# #   cat(lam.boot, "\n")
+# #   return(lam.boot)
+# #   
+# # }
+# # 
+# # ### do the bootstrap (code takes ~ X min to run)
+# # starttime <- Sys.time()
+# # boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+# #                     R = 1000)
+# # endtime <- Sys.time()
+# # 
+# # boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# # 
+# # 
+# # 
+# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aMrU ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
+# # ---- IPM size touch - aMrU: define kernel components ----
+# 
+# # IPM book pg. 24-25
+# 
+# ### survival: s(z)
+# 
+# s_z_st <- function(z, m.par_st){
+#   
+#   ## linear predictor
+#   
+#   # below size ceiling
+#   linear.p <- m.par_st['surv.int'] + m.par_st['surv.z'] * z
+#   # above size ceiling
+#   linear.p.sizeceiling <- m.par_st['surv.int'] + m.par_st['surv.z'] * Uz1
+#   
+#   # impose ceiling and backtransform from logit
+#   p <- ifelse(z <= Uz1
+#               , 1/(1+exp(-linear.p)) # below ceiling, use regression coeff of z
+#               , 1/(1+exp(-linear.p.sizeceiling)) # above ceiling, use coeff of Uz1
+#   )
+#   
+#   ## output
+#   return( unname(p) )
+#   
+#   # ## back transform from logit
+#   # p <- 1/(1+exp(-linear.p))
+# }
+# 
+# ### growth: G(z', z, t)
+# 
+# G_z1zt_st <- function(z1, z, t, m.par_st){
+#   
+#   ## based on growth regression coefficients, define mu and sigma of growth PDF
+#   # below size ceiling
+#   mu <- m.par_st['grow.int'] + m.par_st['grow.z'] * z + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * z * t
+#   # above size ceiling
+#   mu.sizeceiling <- m.par_st['grow.int'] + m.par_st['grow.z'] * Uz1 + m.par_st['grow.t'] * t + m.par_st['grow.zt'] * Uz1 * t
+#   
+#   sig <- m.par_st['grow.sd']
+#   
+#   ## calculate growth PDF
+#   # have to loop b/c it's a PDF, not a probability
+#   p.den.grow <- c()
+#   for(q in 1:length(z1)){
+#     p.den.grow[q] <- ifelse(z <= Uz1
+#                             , dnorm(z1[q], mean = mu, sd = sig) # below ceiling
+#                             , dnorm(z1[q], mean = mu.sizeceiling, sd = sig) # above ceiling
+#     )
+#   }
+#   
+#   ## output
+#   return(p.den.grow)
+#   
+# }
+# ### touch dynamics: T(t', t)
+# 
+# T_t1t_st <- function(t1, t, m.par_st){
+#   
+#   p.den.touch <- dbeta(t1
+#                        , shape1 = 300
+#                        , shape2 = 300
+#   )
+#   
+#   ## output
+#   return(p.den.touch)
+# }
+# 
+# ### prob reproduce: p_bz
+# 
+# p_bz_st <- function(z, t, m.par_st){
+#   ### convert z to v
+#   v <- ifelse(z <= Uz1
+#               , z * 131.18 - 152.52 # below ceiling
+#               , Uz1 * 131.18 - 152.52 # above ceiling
+#   )
+#   
+#   # linear predictor
+#   linear.p <- m.par_st['repr.int'] + m.par_st['repr.v'] * v + m.par_st['repr.t'] * t
+#   
+#   # back transform from logit
+#   p <- 1/(1+exp(-linear.p))
+#   
+#   # output
+#   return( unname(p) )
+# }
+# 
+# 
+# ### fecundity: b_z
+# 
+# b_z <- function(z){
+#   # from Strathmann
+#   
+#   p.bz <- ifelse(z <= Uz1
+#                  , 0.147 * (10 * z)^2.74
+#                  , 0.147 * (10 * Uz1)^2.74
+#   )
+#   
+#   return(p.bz)
+# }
+# 
+# ### recruit size dist: C_0(z')
+# 
+# C_0z1 <- function(z1, m.par_st){
+#   mu <- m.par_st['rcsz.int']
+#   sig <- m.par_st['rcsz.sd']
+#   p.den.rcsz <- dnorm(z1, mean = mu, sd = sig)
+#   return(p.den.rcsz)
+# }
+# 
+# ### recruit touch dist: C_0(t')
+# 
+# C_0t1 <- function(t1, m.par_st){
+#   
+#   p.den.rcst <- dbeta(t1 # recruits start with equal chance across all levels of touch
+#                       , shape1 = 1
+#                       , shape2 = 1
+#   )
+#   
+#   # shp1 <- m.par_st['rcst.s1']
+#   # shp2 <- m.par_st['rcst.s2']
+#   # p.den.rcst <- dbeta(t1, shape1 = shp1, shape2 = shp2 )
+#   
+#   
+#   return(p.den.rcst)
+# }
+# 
+# 
+# ### define P component of kernel (survival and growth): P(z',z,t) = s(z)*G(z',z, t)*T(t1,t)
+# 
+# P_z1z <- function(z1, z, t1, t, m.par_st){
+#   return( s_z_st(z, m.par_st) * G_z1zt_st(z1, z, t, m.par_st) * T_t1t_st(t1, t, m.par_st)
+#   )
+# }
+# 
+# ### define F component of kernel (reproduction): F(z',z,t')=s(z)*Pb(z, t)*b(z)*Pr*Co(z')*Co(t')
+# 
+# F_z1z <- function(z1, z, t1, t, m.par_st){
+#   return(
+#     unname(
+#       s_z_st(z, m.par_st) * p_bz_st(z, t, m.par_st) * b_z(z) * m.par_st['p.r'] * C_0z1(z1, m.par_st)  * C_0t1(t1, m.par_st)
+#     )
+#   )
+# }
+# 
+# 
+# ### define K kernel
+# k_st <- function(z1, t1,  z, t, m.par_st){
+#   P_z1z(z1, z, t1, t, m.par_st) + F_z1z(z1, z, t1, t, m.par_st)
+# }
+# 
+# # ---- *slow, ~ 2 min* IPM size touch - aMrU: numerical implementation ----
+# 
+# # following IPM book pg. 162-164 and SizeQualityExample.R
+# 
+# ### compute meshpoints
+# mz <- 100 # number of size mesh points 
+# mt <- 50  # number of touch mesh points
+# Lz <- 0.1 # size lower bound
+# Uz<- 10  # size upper bound
+# Lt <- 0 # touch lower bound
+# Ut <- 1 # touch upper bound
+# hz <- (Uz-Lz)/mz # size mesh point breaks
+# yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+# ht <- (Ut-Lt)/mt # touch mesh point breaks
+# yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+# 
+# ### compute 4D kernel and 2D iteration matrix
+# 
+# 
+# 
+# # Function eta to put kernel values in their proper place in A
+# eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+# 
+# # matrix whose (i,j) entry is eta(ij)
+# Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+# 
+# # code modified from IPM book, Ch 6, SizeQualityExample.R
+# A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+# for(i in 1:mz){
+#   for(j in 1:mt){
+#     for(k in 1:mt){
+#       kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+#       A[Eta[,k],Eta[i,j]]=kvals
+#       Kvals[,k,i,j]=kvals
+#       
+#     }}
+#   cat(i,"\n");
+# }
+# A<-hz*ht*A
+# 
+# # # tried using simpler method on IPM book pg. 166 to create A matrix, much slower. nope.
+# # 
+# # Kd <- expand.grid(z1 = yz, t1 = yt, z = yz, t = yt)
+# # 
+# # A <- with(Kd, k_st(z1, t1, z, t, m.par_st))
+# # dim(A) <- c(mz * mt, mz * mt)
+# # A <- hz*ht*A
+# 
+# ### calculate Lambda, w, and v
+# out <- domEig(A) # returns lambda and a vector proportional to w
+# out2 <- domEig(t(A)) # returns lambda and a vector proportional to v
+# lam.stable <- out$lambda
+# lam.stable.t <- out2$lambda
+# w <- Re(matrix(out$w, mz, mt))
+# w <- w/(hz*ht*sum(w))
+# v <- Re(matrix(out2$w, mz, mt))
+# v <- v/sum(v) 
+# 
+# # ---- IPM size touch - aMrU: perturbation analysis ----
+# 
+# ### Compute elasticity matrix 
+# repro.val_aMrU <- matrix(v, mz, mt)
+# stable.state_aMrU <- matrix(w, mz, mt) 
+# stable.state_aMrU.vector <- apply(stable.state_aMrU, 1, sum)
+# v.dot.w <- sum(hz*ht*stable.state_aMrU*repro.val_aMrU)
+# sens <- outer(repro.val_aMrU,stable.state_aMrU)/v.dot.w
+# elas <- sens*Kvals/lam.stable
+# 
+# ### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
+# total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+# 
+# ### Checks
+# cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
+# cat("Integrated elasticity =",sum(hz*ht*hz*ht*elas)," and it should = 1","\n") 
+# 
+# ### Plots
+# 
+# ## stable size distribution
+# 
+# plot(yz
+#      , (stable.state_aMrU.vector/sum(stable.state_aMrU.vector))*10
+#      , xlab = "Operculum length, mm"
+#      , ylab = "Frequency"
+#      , type = "l"
+#      , ylim = c(0, 1)
+# )
+# 
+# # # code following IPM book (I modified this to make it a probability)
+# # plot(yz
+# #      , stable.state_aMrU.vector
+# #      , xlab = "Size x"
+# #      , ylab = "Frequency"
+# #      , type = "l"
+# # )
+# 
+# 
+# 
+# 
+# ## stable size and crowding distribution
+# image(yz
+#       , yt
+#       , stable.state_aMrU
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , stable.state_aMrU
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# ## reproductive value
+# image(yz
+#       , yt
+#       , repro.val_aMrU
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , repro.val_aMrU
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# ## total elasticity
+# # image(yt
+# #       , yz
+# #       , t(total.elas)
+# #       , col = grey(seq(0.5, 1, length=100))
+# #       , xlab = "Crowding"
+# #       , ylab = "Operculum length, mm"
+# # )
+# # contour(yt
+# #         , yz
+# #         , t(total.elas)
+# #         , add = TRUE
+# #         , nlevels = 6
+# #         , labcex = 0.8
+# # )
+# 
+# image(yz
+#       , yt
+#       , total.elas
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , total.elas
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
+# 
+# # # ---- *slow, ~ 34 hrs* IPM size touch - aMrU: lambda CI ----
+# # # from Monocarp Lambda Bootstrap CI.R, IPM book pg. 30
+# # 
+# # # NOTE: only the survival/growth dataset is boostrapped. other sources of uncertainty (e.g. reproduction) are not quantified b/c their functions draw on separate datasets. 
+# # 
+# # ### function to compute lambda from a bootstrapped data set in format required by library(boot)
+# # boot.lam.st <- function(dataset, sample.index) {
+# #   
+# #   ### extract the data used to make this fit
+# #   boot.data <- dataset[sample.index, ] # don't shuffle using sample index, library(boot) does it.
+# #   
+# #   ### fit the functions
+# #   
+# #   ## survival
+# #   mod.Surv <- glm(Surv ~ z
+# #                   , family = binomial
+# #                   , data = boot.data
+# #   )
+# #   
+# #   ## growth
+# #   
+# #   boot.data.growth <- boot.data[is.na(boot.data$z1) == F, ]
+# #   
+# #   #z.growth <- boot.data.growth$z
+# #   mod.Grow_st <- lm(z1 ~ z * touch_pct
+# #                     , data = boot.data.growth
+# #                     
+# #   )
+# #   
+# #   ## recruit size distribution
+# #   mod.Rcsz <- lm(z ~ 1 
+# #                  , data = rec
+# #   )
+# #   
+# #   ### Store the estimated parameters
+# #   
+# #   m.par_st <- c(
+# #     surv = coef(mod.Surv)
+# #     , grow = coef(mod.Grow_st)
+# #     , grow.sd = summary(mod.Grow_st)$sigma
+# #     , rcsz = coef(mod.Rcsz)
+# #     , rcsz.sd = summary(mod.Rcsz)$sigma
+# #     , rcst = coef(betafit_t)
+# #     , p.r = p.r.est
+# #     , repr = coef(reprodyn.1b)
+# #     #, U1 = U1
+# #   )
+# #   
+# #   names(m.par_st) <- c(
+# #     'surv.int'
+# #     , 'surv.z'
+# #     , 'grow.int'
+# #     , 'grow.z'
+# #     , 'grow.t'
+# #     , 'grow.zt'
+# #     , 'grow.sd'
+# #     , 'rcsz.int'
+# #     , 'rcsz.sd'
+# #     , 'rcst.s1'
+# #     , 'rcst.s2'
+# #     , 'p.r'
+# #     , 'repr.int' # model is for volume, NOT operc length
+# #     , 'repr.t' # model is for volume, NOT operc length
+# #     , 'repr.v' # v here b/c it's volume, NOT operc length
+# #     #, 'U1'
+# #   )
+# #   
+# #   ### implement IPM and calculate lambda
+# #   # following IPM book pg. 162-164 and SizeQualityExample.R
+# #   
+# #   ## compute meshpoints
+# #   mz <- 100 # number of size mesh points 
+# #   mt <- 50  # number of touch mesh points
+# #   Lz <- 0.1 # size lower bound
+# #   Uz<- 10  # size upper bound
+# #   Lt <- 0 # touch lower bound
+# #   Ut <- 1 # touch upper bound
+# #   hz <- (Uz-Lz)/mz # size mesh point breaks
+# #   yz <- Lz + hz*((1:mz)-0.5) # size actual mesh points
+# #   ht <- (Ut-Lt)/mt # touch mesh point breaks
+# #   yt <- Lt + ht*((1:mt)-0.5) # touch acutal mesh points
+# #   
+# #   ## compute 4D kernel and 2D iteration matrix
+# #   # Function eta to put kernel values in their proper place in A
+# #   eta_ij <- function(i, j, mz) {(j-1)*mz+i}
+# #   
+# #   # matrix whose (i,j) entry is eta(ij)
+# #   Eta <- outer(1:mz, 1:mt, eta_ij, mz = mz)
+# #   
+# #   # code modified from IPM book, Ch 6, SizeQualityExample.R
+# #   A=matrix(0,mz*mt,mz*mt); Kvals=array(0,c(mz,mt,mz,mt));
+# #   for(i in 1:mz){
+# #     for(j in 1:mt){
+# #       for(k in 1:mt){
+# #         kvals=k_st(yz,yt[k],yz[i],yt[j],m.par_st)
+# #         A[Eta[,k],Eta[i,j]]=kvals
+# #         Kvals[,k,i,j]=kvals
+# #         
+# #       }}
+# #     cat(i,"\n");
+# #   }
+# #   A<-hz*ht*A
+# #   
+# #   out <- domEig(A) # returns lambda and a vector proportional to w
+# #   lam.boot <- out$lambda
+# #   cat(lam.boot, "\n")
+# #   return(lam.boot)
+# #   
+# # }
+# # 
+# # ### do the bootstrap (code takes ~ X min to run)
+# # starttime <- Sys.time()
+# # boot.out.st <- boot(data = dat, statistic = boot.lam.st, simple = TRUE,
+# #                     R = 1000)
+# # endtime <- Sys.time()
+# # 
+# # boot.ci(boot.out.st, type = c('norm', 'basic', 'perc'))
+# # 
+# # 
+# # 
