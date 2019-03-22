@@ -26,7 +26,103 @@ lambda.field.subset_serange <- c(lambda.field.subset_mean - lambda.field.subset_
                               , lambda.field.subset_mean + lambda.field.subset_se # upper
 )
 
-# ---- plot ----
+# ---- plot: vertical style ----
+
+## blank plot
+plot(cont ~ lambda
+     , data = lambdas.model
+     , ylim = c(max(cont), min(cont)-2)
+     , xlim = c(0.5, 2.5)
+     , type = 'n'
+     , axes = F
+     , xlab = ''
+     , ylab = ''
+)
+
+## add line of zero population growth
+lines(x = c(1, 1)
+      , y = c(min(lambdas.model$cont)-3, max(lambdas.model$cont)+1)
+      , col = 'gray'
+      , lty = 2
+)
+
+# mean and se of all field lambdas
+lines(y = c(min(lambdas.model$cont) - 2, min(lambdas.model$cont) - 2)
+      , x = c(lambda.field.all_serange[1], lambda.field.all_serange[2])
+)
+points(y = min(lambdas.model$cont) - 2
+       , x = lambda.field.all_mean
+       , pch = 21
+       , bg = 'white'
+)
+
+# mean and se of field lambdas < 2
+lines(y = c(min(lambdas.model$cont) - 1, min(lambdas.model$cont) - 1)
+      , x = c(lambda.field.subset_serange[1], lambda.field.subset_serange[2])
+)
+points(y = min(lambdas.model$cont) - 1
+       , x = lambda.field.subset_mean
+       , pch = 21
+       , bg = 'white'
+)
+
+## 95% CIs of model lambdas
+for (i in min(lambdas.model$cont):max(lambdas.model$cont)){
+  lines(y = c(i, i)
+        , x = c(lambdas.model$confint95_lower[lambdas.model$cont == i]
+                , lambdas.model$confint95_upper[lambdas.model$cont == i])
+  )
+}
+
+## model lambdas in black
+points(cont ~ lambda
+       , data = lambdas.model
+       , xlim = c(0.5, 2.5)
+       , ylim = c(min(cont)-2, max(cont))
+       , col = 'black'
+       , pch = 19
+)
+
+
+# axes and axes labels
+axis(1
+     , las = 1
+     , pos = max(lambdas.model$cont) + 1
+     , tck = 0.02
+)
+axis(2 
+     , at = seq(from = min(lambdas.model$cont) - 3
+                , to = max(lambdas.model$cont) + 1
+                , by = 1)
+     , pos = 0.5
+     , tck = 0.02
+     , labels = c('', 'field all', 'field subset', as.character(lambdas.model$scenario), '')
+     , las = 2
+)
+axis(3
+     , las = 1
+     , pos = min(lambdas.model$cont) - 3
+     , tck = 0.02
+     , labels = F
+)
+
+axis(4
+     , at = seq(from = min(lambdas.model$cont) - 3
+                , to = max(lambdas.model$cont) + 1
+                , by = 1)
+     , pos = 2.5
+     , tck = 0.02
+     , labels = F
+)
+
+
+mtext('Lambda'
+      , side = 1
+      , line = 3.5
+      , cex = 1.2
+)
+
+# ---- plot: horizontal style ----
 
 ## blank plot
 plot(lambda ~ cont
