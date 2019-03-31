@@ -2488,8 +2488,6 @@ contour(yz
 ### ceiling 
 # Uz1 refers to upper limit of size z, beyond which vital rates are the same as Uz1
 Uz1 = 6
-# Ut1 refers to upper limit of touch t, beyond withich vital rates are the same as Ut1
-Ut1 = 0.8
 
 ### number of 'bins' for iteration matrix
 nBigMatrix_z <- 500
