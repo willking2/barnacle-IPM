@@ -454,14 +454,14 @@ lines(crowdy.x
       , col = 'red'
 )
 
-# mostly medium crowd
-lines(crowdy.x
-      , dbeta(crowdy.x
-              , shape1 = 300
-              , shape2 = 300
-      )
-      , col = 'purple'
-)
+# # mostly medium crowd
+# lines(crowdy.x
+#       , dbeta(crowdy.x
+#               , shape1 = 300
+#               , shape2 = 300
+#       )
+#       , col = 'purple'
+# )
 
 # uniform
 lines(crowdy.x
@@ -472,22 +472,28 @@ lines(crowdy.x
       , col = 'orange'
 )
 
-# field observed touch distribution
-lines(crowdy.x
-      , dbeta(crowdy.x
-              , shape1 = betafit_t$estimate[1] # 1
-              , shape2 = betafit_t$estimate[2] # 3.61
-      )
-      , col = 'green'
-)
+# # field observed adult touch distribution
+# lines(crowdy.x
+#       , dbeta(crowdy.x
+#               , shape1 = betafit_t$estimate[1] # 1
+#               , shape2 = betafit_t$estimate[2] # 3.61
+#       )
+#       , col = 'green'
+# )
 
-### quantifying amount of area under the curve for low and high crowding scenarios
+### quantifying amount of area under the curve for crowding scenarios
+
+crowdy.uniform <- function(x)dbeta(x, shape1 = 1, shape2 = 1)
+integrate(function(x)crowdy.uniform(x), 0.2, 0.3)
+integrate(function(x)crowdy.uniform(x), 0.1, 0.2)
 
 crowdy.low <- function(x)dbeta(x, shape1 = 2, shape2 = 50)
+integrate(function(x)crowdy.low(x), 0, 0.1)
 integrate(function(x)crowdy.low(x), 0, 0.2)
 
 crowdy.high <- function(x)dbeta(x, shape1 = 50, shape2 = 2)
 integrate(function(x) crowdy.high(x), 0.8, 1)
+integrate(function(x) crowdy.high(x), 0.9, 1)
 
 
 # ~ Regression analysis ~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
