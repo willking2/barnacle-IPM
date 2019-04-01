@@ -454,7 +454,7 @@ lines(crowdy.x
       , col = 'red'
 )
 
-# unimodal
+# mostly medium crowd
 lines(crowdy.x
       , dbeta(crowdy.x
               , shape1 = 300
@@ -480,6 +480,15 @@ lines(crowdy.x
       )
       , col = 'green'
 )
+
+### quantifying amount of area under the curve for low and high crowding scenarios
+
+crowdy.low <- function(x)dbeta(x, shape1 = 2, shape2 = 50)
+integrate(function(x)crowdy.low(x), 0, 0.2)
+
+crowdy.high <- function(x)dbeta(x, shape1 = 50, shape2 = 2)
+integrate(function(x) crowdy.high(x), 0.8, 1)
+
 
 # ~ Regression analysis ~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- analyze: growth ----
