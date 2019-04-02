@@ -1,7 +1,42 @@
 ### Will King
 ### Ch 3 - population model for B. glandula, IPM
 
-### need to run models from ch3_IPM_20190225 main file before able to plot these
+# need to run models from ch3_IPM_20190225 main file before able to plot these
+
+### compare size distributions of aUrU, aLrH, and aHrL
+
+# aUrU
+plot(yz
+     , (stable.state_aUrU.vector/sum(stable.state_aUrU.vector))*10
+     , xlab = "Body size (Operculum length, mm)"
+     , ylab = "Probability density"
+     , type = "l"
+     , ylim = c(0, 0.11)
+)
+
+# aLrH
+lines(yz
+     , (stable.state_aLrH.vector/sum(stable.state_aLrH.vector))*10
+     , xlab = "Body size (Operculum length, mm)"
+     , ylab = "Probability density"
+     , type = "l"
+     , ylim = c(0, 0.11)
+     , col = 'blue'
+)
+
+# aHrL
+lines(yz
+      , (stable.state_aHrL.vector/sum(stable.state_aHrL.vector))*10
+      , xlab = "Body size (Operculum length, mm)"
+      , ylab = "Probability density"
+      , type = "l"
+      , ylim = c(0, 0.11)
+      , col = 'red'
+)
+
+
+
+### other code
 
 plot(yz
      , (stable.state_aFrU.vector/sum(stable.state_aFrU.vector))*10
