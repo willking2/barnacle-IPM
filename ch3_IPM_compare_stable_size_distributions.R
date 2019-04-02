@@ -39,11 +39,11 @@ ks.test(stablesizes_aLrH, stablesizes_aHrL)
 
 # for barnacles above 2 mm
 
-# aUrU vs. aLrH: NS
+# aUrU vs. aLrH: NS (don't actually need this test)
 ks.test(stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aUrU']
        , stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aLrH']
 )
-# aUrU vs. aHrL: NS
+# aUrU vs. aHrL: NS (don't actually need this test)
 ks.test(stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aUrU']
         , stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aHrL']
 )
