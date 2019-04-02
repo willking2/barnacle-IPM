@@ -37,22 +37,22 @@ ks.test(stablesizes_aUrU, stablesizes_aLrH)
 ks.test(stablesizes_aUrU, stablesizes_aHrL)
 ks.test(stablesizes_aLrH, stablesizes_aHrL)
 
-# for barnacles between 2 and 6 mm
+# for barnacles above 2 mm
+
+# aUrU vs. aLrH: NS
 ks.test(stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aUrU']
        , stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aLrH']
 )
+# aUrU vs. aHrL: NS
 ks.test(stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aUrU']
         , stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aHrL']
 )
+# aLrH vs. aHrL: significant
 ks.test(stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aLrH']
         , stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aHrL']
 )
        
-# ---- plot as boxplots ----
 
-boxplot(density ~ scenario
-        , data = stablesizes_trts.big
-)
 
 # ---- plot as densities ----
 
@@ -87,8 +87,15 @@ lines(yz
 )
 
 # ---- graveyard ----
+
+# ---- plot as boxplots ----
 # 
-# ### other code
+# boxplot(density ~ scenario
+#         , data = stablesizes_trts.big
+# )
+
+
+# ---- other plotting code ----
 # 
 # plot(yz
 #      , (stable.state_aFrU.vector/sum(stable.state_aFrU.vector))*10
