@@ -9,8 +9,16 @@ lambdas.model <- lambdas[lambdas$type == 'IPM', ]
 
 # ---- adjust data and calculate terms ----
 
+## order lambdas.model
+# display data in order of: field, then uniform, then from lowest to highest lambda
+
+moop <- lambdas.model[-c(1:3), ]
+meep <- moop[order(moop$lambda), ]
+lambdas.model <- rbind(lambdas.model[1:3, ], meep)
+rm(moop, meep)
+
 # make continuous variable for easier plotting
-lambdas.model$cont <- as.numeric(rownames(lambdas.model))
+lambdas.model$cont <- seq(1:length(lambdas.model$lambda))
 
 # calculate field mean and se with all data included
 lambda.field.all_mean <- mean(lambdas$lambda[lambdas$type == 'field'])
@@ -21,12 +29,19 @@ lambda.field.all_serange <- c(lambda.field.all_mean - lambda.field.all_se # lowe
 
 # calculate field mean and se with lambdas 2.00 or greater excluded (4 points excluded)
 lambda.field.subset_mean <- mean(lambdas$lambda[lambdas$type == 'field' & lambdas$lambda < 2])
-lambda.field.subset_se <- sd(lambdas$lambda[lambdas$type == 'field'& lambdas$lambda < 2])/sqrt(12)
+lambda.field.subset_se <- sd(lambdas$lambda[lambdas$type == 'field'& lambdas$lambda < 2])/sqrt(9)
 lambda.field.subset_serange <- c(lambda.field.subset_mean - lambda.field.subset_se # lower
                               , lambda.field.subset_mean + lambda.field.subset_se # upper
 )
 
+
 # ---- plot: vertical style ----
+
+pdf('plots/compare_lambdas.pdf', width = 5, height = 7)
+par(xpd = NA
+    , cex = 1.2
+    , mar = c(5, 5, 1.5, 0.5)
+)
 
 ## blank plot
 plot(cont ~ lambda
@@ -44,6 +59,13 @@ lines(x = c(1, 1)
       , y = c(min(lambdas.model$cont)-3, max(lambdas.model$cont)+1)
       , col = 'gray'
       , lty = 2
+)
+
+## add line separating comparisons you want to make
+lines(x = c(0.5, 2.5)
+      , y = c(2.5, 2.5)
+      # , col = 'gray'
+      # , lty = 2
 )
 
 # mean and se of all field lambdas
@@ -85,6 +107,9 @@ points(cont ~ lambda
 
 
 # axes and axes labels
+
+
+
 axis(1
      , las = 1
      , pos = max(lambdas.model$cont) + 1
@@ -116,11 +141,27 @@ axis(4
 )
 
 
-mtext('Lambda'
+mtext(expression(lambda)
       , side = 1
       , line = 3.5
       , cex = 1.2
 )
+
+mtext('IPMs'
+      , side = 2
+      , line = 3.6
+      , cex = 1.2
+)
+
+lines(y = c(min(lambdas.model$cont), 4.3)
+      , x = c(-0.15, -0.15)
+)
+
+lines(y = c(5.7, max(lambdas.model$cont))
+      , x = c(-0.15, -0.15)
+)
+
+dev.off()
 
 # ---- graveyard ----
 # # ---- plot: horizontal style ----
@@ -216,4 +257,23 @@ mtext('Lambda'
 #       , side = 2
 #       , line = 3
 #       , cex = 1.2
+# )
+
+# ---- subscripts ----
+# ## make vector of nice axes labels
+# lamlabels <- c(''
+#                , 'field all'
+#                , 'field subset'
+#                , expression(IPM[size-only])
+#                , expression(IPM[aFrF])
+#                , expression(IPM[aUrU])
+#                , expression(IPM[aLrH])
+#                , expression(IPM[aUrH])
+#                , expression(IPM[aHrH])
+#                , expression(IPM[aLrU])
+#                , expression(IPM[aHrU])
+#                , expression(IPM[aLrL])
+#                , expression(IPM[aUrL])
+#                , expression(IPM[aHrL])
+#                , ''
 # )
