@@ -108,8 +108,6 @@ points(cont ~ lambda
 
 # axes and axes labels
 
-
-
 axis(1
      , las = 1
      , pos = max(lambdas.model$cont) + 1
