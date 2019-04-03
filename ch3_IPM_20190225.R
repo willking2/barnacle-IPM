@@ -692,7 +692,7 @@ growthfit.08 <- growthpreds.08$fit
 
 pdf('plots/ch3_growth.absolute.pdf', width = 5, height = 5)
 par(cex = 1.2
-    , mar = c(5, 5, 0.5, 0.5)
+    , mar = c(4, 4, 0.5, 0.5)
 )
 
 ## base plot
@@ -930,6 +930,14 @@ survfit <- mod.Surv$family$linkinv(survpreds$fit)
 
 ### actually plot
 
+
+pdf('plots/ch3_survival.pdf', width = 5, height = 5)
+par(cex = 1.2
+    , mar = c(4, 4, 0.5, 0.5)
+)
+
+
+
 ## base plot
 plot(Surv.numeric ~ z
      , data = dat
@@ -993,6 +1001,8 @@ mtext('Probability of survival'
       , cex = 1.2
 )
 
+
+dev.off()
 
 # ~ IPM simple ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
 # ---- IPM simple: general parameters ----
