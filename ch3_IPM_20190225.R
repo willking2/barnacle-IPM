@@ -638,6 +638,8 @@ qqline(resid(growth.1))
 
 # ---- plot: growth ----
 
+
+
 ### calculate predictions and CIs
 
 critval <- 1.96
@@ -686,6 +688,12 @@ growthCI.lower.08 <- growthpreds.08$fit - critval*growthpreds.08$se.fit
 growthfit.08 <- growthpreds.08$fit
 
 ### actually plot
+
+
+pdf('plots/ch3_growth.absolute.pdf', width = 5, height = 5)
+par(cex = 1.2
+    , mar = c(5, 5, 0.5, 0.5)
+)
 
 ## base plot
 plot(z1 ~ z
@@ -776,16 +784,19 @@ axis(4
 )
 
 
-mtext('Operculum length (mm), year t'
+mtext('Body size (operculum length, mm), year t'
       , side = 1
       , line = 2
       , cex = 1.2
 )
-mtext('Operculum length (mm), year t+1'
+mtext('Body size (operculum length, mm), year t+1'
       , side = 2
       , line = 2.5
       , cex = 1.2
 )
+
+
+dev.off()
 
 # ---- analyze: survival ----
 
