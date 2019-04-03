@@ -8,23 +8,21 @@
 
 # ---- calculate stable size distributions ----
 
-stablesizes_aUrU <- (stable.state_aUrU.vector/sum(stable.state_aUrU.vector))*10
 stablesizes_aLrH <- (stable.state_aLrH.vector/sum(stable.state_aLrH.vector))*10
 stablesizes_aHrL <- (stable.state_aHrL.vector/sum(stable.state_aHrL.vector))*10
 
 # ---- make dataset of stable size distributions ----
 
 # full distributions
-stablesizes_trts <- data.frame(scenario = rep(NA, 300)
-                               , size = rep(NA, 300)
-                               , density = rep(NA, 300)
+stablesizes_trts <- data.frame(scenario = rep(NA, 200)
+                               , size = rep(NA, 200)
+                               , density = rep(NA, 200)
 )
-stablesizes_trts$scenario <- c(rep("aUrU", 100)
-                               , rep("aLrH", 100)
+stablesizes_trts$scenario <- c(rep("aLrH", 100)
                                , rep("aHrL", 100)
 )
 stablesizes_trts$size <- yz  
-stablesizes_trts$density <- c(stablesizes_aUrU, stablesizes_aLrH, stablesizes_aHrL)
+stablesizes_trts$density <- c(stablesizes_aLrH, stablesizes_aHrL)
 
 # distribution of barnacles less than 2 mm
 stablesizes_trts.small <- stablesizes_trts[stablesizes_trts$size < 2
@@ -38,8 +36,6 @@ stablesizes_trts.big <- stablesizes_trts[stablesizes_trts$size > 2
 # ---- KS tests ----
 
 # for entire distribution
-ks.test(stablesizes_aUrU, stablesizes_aLrH)
-ks.test(stablesizes_aUrU, stablesizes_aHrL)
 ks.test(stablesizes_aLrH, stablesizes_aHrL)
 
 # for barnacles below 2 mm
@@ -63,7 +59,7 @@ ks.test(stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aLrH']
 
 pdf('plots/compare_sizedistributions.pdf', width = 5, height = 5)
 par(cex = 1.2
-    , mar = c(5, 5, 0.5, 0.5)
+    , mar = c(4, 4, 0.5, 0.5)
 )
 
 # aUrU
@@ -113,22 +109,22 @@ lines(yz
 
 
 # line labels
-text(x = 3.2
-     , y = 0.175
+text(x = 5
+     , y = 0.25
      , 'aLrH'
 )
 
-lines(x = c(2.5, 2.75)
-      , y = c(0.11, 0.14)
+lines(x = c(2.6, 4.3)
+      , y = c(0.11, 0.23)
 )
   
   
-text(x = 4.8
-     , y = 0.175
+text(x = 5
+     , y = 0.15
      , 'aHrL'
 )
-lines(x = c(4, 4.25)
-      , y = c(0.1, 0.14)
+lines(x = c(4, 4.35)
+      , y = c(0.1, 0.13)
 )
 
 
@@ -170,11 +166,14 @@ mtext('Probability density'
       , cex = 1.2
 )
 
-text(x = 8
-     , y = 0.25
-     , 'p = 0.023'
+text(x = 7.5
+     , y = 0.2
+     , 'P = 0.023'
 )
 
+lines(x = c(6, 6)
+      , y = c(0.15, 0.25)
+)
 
 dev.off()
 
