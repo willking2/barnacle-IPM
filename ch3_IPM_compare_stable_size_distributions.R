@@ -5,6 +5,7 @@
 
 ### compare size distributions of aUrU, aLrH, and aHrL
 
+
 # ---- calculate stable size distributions ----
 
 stablesizes_aUrU <- (stable.state_aUrU.vector/sum(stable.state_aUrU.vector))*10
@@ -25,7 +26,11 @@ stablesizes_trts$scenario <- c(rep("aUrU", 100)
 stablesizes_trts$size <- yz  
 stablesizes_trts$density <- c(stablesizes_aUrU, stablesizes_aLrH, stablesizes_aHrL)
 
-# distribution of barnacles between 2 and 6 mm
+# distribution of barnacles less than 2 mm
+stablesizes_trts.small <- stablesizes_trts[stablesizes_trts$size < 2
+                                         , ]
+
+# distribution of barnacles greater than 2 mm
 stablesizes_trts.big <- stablesizes_trts[stablesizes_trts$size > 2
                                          #& stablesizes_trts$size < 6
                                          , ]
@@ -37,33 +42,53 @@ ks.test(stablesizes_aUrU, stablesizes_aLrH)
 ks.test(stablesizes_aUrU, stablesizes_aHrL)
 ks.test(stablesizes_aLrH, stablesizes_aHrL)
 
-# for barnacles above 2 mm
+# for barnacles below 2 mm
+# aLrH vs. aHrL: NS
+ks.test(stablesizes_trts.small$density[stablesizes_trts.small$scenario == 'aLrH']
+        , stablesizes_trts.small$density[stablesizes_trts.small$scenario == 'aHrL']
+)
 
-# aUrU vs. aLrH: NS (don't actually need this test)
-ks.test(stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aUrU']
-       , stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aLrH']
-)
-# aUrU vs. aHrL: NS (don't actually need this test)
-ks.test(stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aUrU']
-        , stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aHrL']
-)
+# for barnacles above 2 mm
 # aLrH vs. aHrL: significant
 ks.test(stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aLrH']
         , stablesizes_trts.big$density[stablesizes_trts.big$scenario == 'aHrL']
 )
        
 
+# ---- plot as densities: full size range ----
 
-# ---- plot as densities ----
+### full plot
 
+#par(fig = c(0, 1, 0, 1)) # use this for doing main/inset figure
+
+pdf('plots/compare_sizedistributions.pdf', width = 5, height = 5)
+par(cex = 1.2
+    , mar = c(5, 5, 0.5, 0.5)
+)
 
 # aUrU
 plot(yz
-     , stablesizes_aUrU
-     , xlab = "Body size (Operculum length, mm)"
-     , ylab = "Probability density"
-     , type = "l"
-     #, ylim = c(0, 0.15)
+     , stablesizes_aHrL
+     # , xlab = "Body size (Operculum length, mm)"
+     # , ylab = "Probability density"
+     , type = 'n'
+     # , col = 'gray'
+     , ylim = c(0, 1)
+     , xlab = ''
+     , ylab = ''
+     , axes = F
+)
+
+# line showing portion compared w/ KS test
+lines(x = c(2, 2)
+      , y = c(0, 0.3)
+      , col = 'gray'
+      , lty = 2
+)
+lines(x = c(2, 10)
+      , y = c(0.3, 0.3)
+      , col = 'gray'
+      , lty = 2
 )
 
 # aLrH
@@ -72,8 +97,8 @@ lines(yz
      , xlab = "Body size (Operculum length, mm)"
      , ylab = "Probability density"
      , type = "l"
-     #, ylim = c(0, 0.15)
-     , col = 'blue'
+     , ylim = c(0, 1)
+     , lwd = 1
 )
 
 # aHrL
@@ -82,16 +107,105 @@ lines(yz
       , xlab = "Body size (Operculum length, mm)"
       , ylab = "Probability density"
       , type = "l"
-      #, ylim = c(0, 0.15)
-      , col = 'red'
+      , ylim = c(0, 1)
+      , lwd = 2
 )
+
+
+# line labels
+text(x = 3.2
+     , y = 0.175
+     , 'aLrH'
+)
+
+lines(x = c(2.5, 2.75)
+      , y = c(0.11, 0.14)
+)
+  
+  
+text(x = 4.8
+     , y = 0.175
+     , 'aHrL'
+)
+lines(x = c(4, 4.25)
+      , y = c(0.1, 0.14)
+)
+
+
+# axes and axes labels
+
+axis(1
+     , las = 1
+     , pos = 0
+     , tck = 0.02
+)
+axis(2 
+     , pos = 0
+     , tck = 0.02
+     , las = 2
+)
+axis(3
+     , las = 1
+     , pos = 1
+     , tck = 0.02
+     , labels = F
+)
+
+axis(4
+     , pos = 10
+     , tck = 0.02
+     , labels = F
+)
+
+
+mtext('Body size (Operculum length, mm)'
+      , side = 1
+      , line = 2
+      , cex = 1.2
+)
+
+mtext('Probability density'
+      , side = 2
+      , line = 2
+      , cex = 1.2
+)
+
+text(x = 8
+     , y = 0.25
+     , 'p = 0.023'
+)
+
+
+dev.off()
+
+
+# 
+# ### inset: reproductive values
+# 
+# par(fig = c(0.5, 1, 0.5, 1)
+#     , new = T)
+# 
+# image(yz
+#       , yt
+#       , repro.val_aHrL
+#       , col = grey(seq(0.5, 1, length=100))
+#       , xlab = "Operculum length, mm"
+#       , ylab = "Crowding"
+# )
+# contour(yz
+#         , yt
+#         , repro.val_aHrL
+#         , add = TRUE
+#         , nlevels = 6
+#         , labcex = 0.8
+# )
 
 # ---- graveyard ----
 
 # ---- plot as boxplots ----
-# 
+# # 
 # boxplot(density ~ scenario
-#         , data = stablesizes_trts.big
+#         , data = stablesizes_trts.small[stablesizes_trts.small$scenario != 'aUrU',]
 # )
 
 
