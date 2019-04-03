@@ -3,7 +3,7 @@
 
 # need to run models from ch3_IPM_20190225 main file before able to plot these
 
-### compare size distributions of aUrU, aLrH, and aHrL
+### compare size distributions of aLrH, and aHrL
 
 
 # ---- calculate stable size distributions ----
@@ -90,8 +90,6 @@ lines(x = c(2, 10)
 # aLrH
 lines(yz
      , stablesizes_aLrH
-     , xlab = "Body size (Operculum length, mm)"
-     , ylab = "Probability density"
      , type = "l"
      , ylim = c(0, 1)
      , lwd = 1
@@ -100,8 +98,6 @@ lines(yz
 # aHrL
 lines(yz
       , stablesizes_aHrL
-      , xlab = "Body size (Operculum length, mm)"
-      , ylab = "Probability density"
       , type = "l"
       , ylim = c(0, 1)
       , lwd = 2
@@ -154,7 +150,7 @@ axis(4
 )
 
 
-mtext('Body size (Operculum length, mm)'
+mtext('Body size (operculum length, mm)'
       , side = 1
       , line = 2
       , cex = 1.2

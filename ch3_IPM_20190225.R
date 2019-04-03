@@ -5895,7 +5895,7 @@ sens <- outer(repro.val_aLrH,stable.state_aLrH)/v.dot.w
 elas <- sens*Kvals/lam.stable
 
 ### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+total.elas_aLrH <- hz*ht*apply(elas,c(3,4),sum) 
 
 ### Checks
 cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
@@ -5974,14 +5974,14 @@ contour(yz
 
 image(yz
       , yt
-      , total.elas
+      , total.elas_aLrH
       , col = grey(seq(0.5, 1, length=100))
       , xlab = "Operculum length, mm"
       , ylab = "Crowding"
 )
 contour(yz
         , yt
-        , total.elas
+        , total.elas_aLrH
         , add = TRUE
         , nlevels = 6
         , labcex = 0.8
@@ -6327,7 +6327,7 @@ sens <- outer(repro.val_aHrL,stable.state_aHrL)/v.dot.w
 elas <- sens*Kvals/lam.stable
 
 ### Compute matrix of total (=integrated) elasticities for all transitions (x_i,q_j) to anywhere 
-total.elas <- hz*ht*apply(elas,c(3,4),sum) 
+total.elas_aHrL <- hz*ht*apply(elas,c(3,4),sum) 
 
 ### Checks
 cat("Forward and transpose iteration: ",lam.stable," should be the same as ",lam.stable.t,"\n");  
@@ -6406,14 +6406,14 @@ contour(yz
 
 image(yz
       , yt
-      , total.elas
+      , total.elas_aHrL
       , col = grey(seq(0.5, 1, length=100))
       , xlab = "Operculum length, mm"
       , ylab = "Crowding"
 )
 contour(yz
         , yt
-        , total.elas
+        , total.elas_aHrL
         , add = TRUE
         , nlevels = 6
         , labcex = 0.8
