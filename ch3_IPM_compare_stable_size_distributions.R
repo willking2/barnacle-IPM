@@ -79,12 +79,12 @@ plot(yz
 lines(x = c(2, 2)
       , y = c(0, 0.3)
       , col = 'gray'
-      , lty = 2
+      #, lty = 2
 )
 lines(x = c(2, 10)
       , y = c(0.3, 0.3)
       , col = 'gray'
-      , lty = 2
+      #, lty = 2
 )
 
 # aLrH
