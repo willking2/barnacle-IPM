@@ -1,13 +1,13 @@
 ### Will King
 ### Ch 3 - population model for B. glandula, IPM
 
-# compare total sensitivities of aLrH and aHrL
+# compare total elasticities of aLrH and aHrL
 
 ## need to run models and perturbation analyses from main file first
 
 # ---- plot both figs in one figure ----
 
-pdf('plots/compare_sensitivities.pdf', width = 8, height = 5)
+pdf('plots/compare_elasticities.pdf', width = 8, height = 5)
 
 par(mfrow = c(1, 2)
     , cex = 1.2
