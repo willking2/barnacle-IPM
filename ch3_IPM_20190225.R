@@ -15,6 +15,7 @@ library(nlme)
 library(doBy)
 library(boot)
 library(fitdistrplus)
+library(MuMIn)
 
 #source('MatrixImage.R') # from Ellner, Childs, and Rees 2016, IPM book
 # load probability of reproduction model that you made in ch 2. you made a separate version of it to use in ch 3, as follows:
@@ -564,6 +565,7 @@ BIC(growth.1
 ### determine fixed structure
 summary(growth.1) # R^2
 Anova(growth.1)
+anova(growth.1)
 
 ### model validation
 
@@ -872,6 +874,9 @@ BIC(survival.1
 ### determine fixed structure
 summary(survival.1)
 Anova(survival.1) # only initial size is significant
+
+### rsquared using MuMIn::r.squaredGLMM
+MuMIn::r.squaredGLMM(survival.1)
 
 ### model validation
 
@@ -1199,7 +1204,7 @@ b_z <- function(z){
   return(p.bz)
 }
 
-### recruitment: C_0(z')
+### recruitment: C_0(z') = R(z')
 
 C_0z1 <- function(z1, m.par_simple){
   mu <- m.par_simple['rcsz.int']
