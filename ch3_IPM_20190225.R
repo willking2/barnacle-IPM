@@ -223,8 +223,12 @@ dat$Surv <- as.factor(dat$Surv)
 
 ### general size structure
 
-hist(dat$z) # doesn't necessarily reflect actual field histogram -- field has way more recruits...
-hist(dat$z1)
+### adults (z1) and recruits together
+hist(c(rec$z, dat$z1), freq = F)
+
+### adults only
+hist(dat$z)
+hist(dat$z1, freq = F)
 
 ### growth
 plot(z1 ~ z
