@@ -61,12 +61,19 @@ lines(x = c(1, 1)
       #, lty = 2
 )
 
-## add line separating comparisons you want to make
-lines(x = c(0.5, 2.5)
-      , y = c(2.5, 2.5)
-      # , col = 'gray'
-      # , lty = 2
-)
+# ## add line of aUrU comparison
+# lines(x = c(1.17, 1.17)
+#       , y = c(3, max(lambdas.model$cont)+1)
+#       , col = 'gray'
+#       #, lty = 2
+# )
+
+# ## add line separating comparisons you want to make
+# lines(x = c(0.5, 2.5)
+#       , y = c(2.5, 2.5)
+#       # , col = 'gray'
+#       # , lty = 2
+# )
 
 # mean and se of all field lambdas
 lines(y = c(min(lambdas.model$cont) - 2, min(lambdas.model$cont) - 2)
