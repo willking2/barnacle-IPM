@@ -150,7 +150,7 @@ axis(4
 )
 
 
-mtext('Body size (operculum length, mm)'
+mtext('Body size (mm)'
       , side = 1
       , line = 2
       , cex = 1.2
@@ -158,7 +158,7 @@ mtext('Body size (operculum length, mm)'
 
 mtext('Probability density'
       , side = 2
-      , line = 2
+      , line = 2.25
       , cex = 1.2
 )
 

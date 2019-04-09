@@ -57,7 +57,7 @@ axis(4
      , tck = -0.02
 )
 
-mtext('Body size (operculum length, mm)'
+mtext('Body size (mm)'
       , side = 1
       , line = 2.5
       , cex = 1.2
@@ -65,10 +65,10 @@ mtext('Body size (operculum length, mm)'
 
 mtext('Crowding'
       , side = 2
-      , line = 2.5
+      , line = 2.75
       , cex = 1.2)
 
-mtext('aLrH'
+mtext('a) aLrH'
       , side = 3
       , line = 0.5
       , cex = 1.2
@@ -117,13 +117,13 @@ axis(4
      , tck = -0.02
 )
 
-mtext('Body size (operculum length, mm)'
+mtext('Body size (mm)'
       , side = 1
       , line = 2.5
       , cex = 1.2
 )
 
-mtext('aHrL'
+mtext('b) aHrL'
       , side = 3
       , line = 0.5
       , cex = 1.2
