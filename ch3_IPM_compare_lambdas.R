@@ -54,19 +54,19 @@ plot(cont ~ lambda
      , ylab = ''
 )
 
-## add line of zero population growth
-lines(x = c(1, 1)
-      , y = c(min(lambdas.model$cont)-3, max(lambdas.model$cont)+1)
-      , col = 'gray'
-      #, lty = 2
-)
-
-# ## add line of aUrU comparison
-# lines(x = c(1.17, 1.17)
-#       , y = c(3, max(lambdas.model$cont)+1)
+# ## add line of zero population growth
+# lines(x = c(1, 1)
+#       , y = c(min(lambdas.model$cont)-3, max(lambdas.model$cont)+1)
 #       , col = 'gray'
 #       #, lty = 2
 # )
+
+## add line of aUrU comparison
+lines(x = c(1.17, 1.17)
+      , y = c(3, max(lambdas.model$cont)+1)
+      , col = 'gray'
+      #, lty = 2
+)
 
 # ## add line separating comparisons you want to make
 # lines(x = c(0.5, 2.5)
