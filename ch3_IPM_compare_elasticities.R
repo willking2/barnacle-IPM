@@ -7,7 +7,9 @@
 
 # ---- plot both figs in one figure ----
 
-pdf('plots/compare_elasticities.pdf', width = 8, height = 5)
+
+
+pdf('plots/compare_elasticities_full.pdf', width = 8, height = 5)
 
 par(mfrow = c(1, 2)
     , cex = 1.2
@@ -68,7 +70,7 @@ mtext('Crowding'
       , line = 2.75
       , cex = 1.2)
 
-mtext('a) aLrH'
+mtext('a) eLrH'
       , side = 3
       , line = 0.5
       , cex = 1.2
@@ -123,7 +125,7 @@ mtext('Body size (mm)'
       , cex = 1.2
 )
 
-mtext('b) aHrL'
+mtext('b) eHrL'
       , side = 3
       , line = 0.5
       , cex = 1.2
