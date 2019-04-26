@@ -15,7 +15,6 @@ library(nlme)
 library(doBy)
 library(boot)
 library(fitdistrplus)
-library(MuMIn)
 
 #source('MatrixImage.R') # from Ellner, Childs, and Rees 2016, IPM book
 # load probability of reproduction model that you made in ch 2. you made a separate version of it to use in ch 3, as follows:
@@ -878,6 +877,15 @@ BIC(survival.1
 ### determine fixed structure
 summary(survival.1)
 Anova(survival.1) # only initial size is significant
+
+### compare body size effect to null
+survival.null <- glm(Surv ~ 1
+                     , family = binomial
+                     , data = dat
+)
+
+AIC(survival.1, survival.null) # AIC prefers survival.1 (which includes body size effect)
+BIC(survival.1, survival.null) # BIC prefer survival.null (lol)
 
 ### rsquared using MuMIn::r.squaredGLMM
 MuMIn::r.squaredGLMM(survival.1)
