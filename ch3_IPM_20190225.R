@@ -218,6 +218,9 @@ dat$Surv <- as.factor(dat$Surv)
 
 
 
+# ---- calculate growth rate ----
+dat$growthrate <- (dat$z1 - dat$z)/dat$day_elapsed
+
 # ---- explore data ----
 
 ### general size structure
@@ -501,7 +504,7 @@ integrate(function(x) crowdy.high(x), 0.9, 1)
 
 
 # ~ Regression analysis ~~~~~~~~~~~~~~~~~~~~~~~~~~ ----
-# ---- analyze: growth ----
+# ---- analyze: growth, z1 vs. z ----
 
 ### determine random structure
 
@@ -641,7 +644,7 @@ qqline(resid(growth.1))
 # qqnorm(resid(growth.1_gls))
 # qqline(resid(growth.1_gls))
 
-# ---- plot: growth ----
+# ---- plot: growth, z1 vs. z ----
 
 
 
@@ -800,6 +803,133 @@ mtext('Body size (operculum length, mm), year t+1'
       , cex = 1.2
 )
 
+
+dev.off()
+
+# ---- analyze: growth rate (supplement) ----
+gr.1 <- lm(growthrate ~ z * touch_pct
+           , data = dat
+)
+
+summary(gr.1)
+anova(gr.1)
+Anova(gr.1) # same pattern as z1 vs. z: interaciton effect btwn z and crowd
+
+# ---- plot: growth rate ----
+
+### calculate predictions and CIs
+
+critval <- 1.96
+
+## touch = 0
+# make blank area for new data
+gr.newgrowth.00 <- expand.grid(
+  z = seq(0, 6, 0.1)
+  , touch_pct = 0
+  , growthrate = 0
+)
+# add predictions
+gr.growthpreds.00 <- predict(gr.1, gr.newgrowth.00, se.fit = T)
+# CIs
+gr.growthCI.upper.00 <- gr.growthpreds.00$fit + critval*gr.growthpreds.00$se.fit
+gr.growthCI.lower.00 <- gr.growthpreds.00$fit - critval*gr.growthpreds.00$se.fit
+gr.growthfit.00 <- gr.growthpreds.00$fit
+
+
+## touch = 0.4
+# make blank area for new data
+gr.newgrowth.04 <- expand.grid(
+  z = seq(0, 6, 0.1)
+  , touch_pct = 0.4
+  , growthrate = 0
+)
+# add predictions
+gr.growthpreds.04 <- predict(gr.1, gr.newgrowth.04, se.fit = T)
+# CIs
+gr.growthCI.upper.04 <- gr.growthpreds.04$fit + critval*gr.growthpreds.04$se.fit
+gr.growthCI.lower.04 <- gr.growthpreds.04$fit - critval*gr.growthpreds.04$se.fit
+gr.growthfit.04 <- gr.growthpreds.04$fit
+
+## touch = 0.8
+# make blank area for new data
+gr.newgrowth.08 <- expand.grid(
+  z = seq(0, 6, 0.1)
+  , touch_pct = 0.8
+  , growthrate = 0
+)
+# add predictions
+gr.growthpreds.08 <- predict(gr.1, gr.newgrowth.08, se.fit = T)
+# CIs
+gr.growthCI.upper.08 <- gr.growthpreds.08$fit + critval*gr.growthpreds.08$se.fit
+gr.growthCI.lower.08 <- gr.growthpreds.08$fit - critval*gr.growthpreds.08$se.fit
+gr.growthfit.08 <- gr.growthpreds.08$fit
+
+
+### actually plot
+
+
+pdf('plots/ch3_growth.rate.pdf', width = 5, height = 5)
+par(cex = 1.2
+    , mar = c(4, 4, 0.5, 0.5)
+)
+
+## base plot
+plot(growthrate ~ z
+     , data = dat
+     # , xlim = c(0, 6)
+     # , ylim = c(0, 8)
+     # , type = 'n'
+     #, axes = F
+     , xlab = 'Body size (mm), year t'
+     , ylab = 'Growth rate (mm per day)'
+)
+
+## color points by touch
+points(growthrate ~ z
+       , data = dat
+       , pch = 19
+       , col = dat$colors
+)
+
+## prediction lines and CIs
+# touch = 0
+polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))), # touch = 0
+        y = c(gr.growthCI.lower.00, rev(gr.growthCI.upper.00)),
+        col = alpha('gray', 0.5),
+        border = NA)
+lines(gr.growthfit.00 ~ seq(0, 6, 0.1)
+      , lwd = 2
+      , lty = 3
+)
+# touch = 0.4
+polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))), # touch = 0
+        y = c(gr.growthCI.lower.04, rev(gr.growthCI.upper.04)),
+        col = alpha('gray', 0.5),
+        border = NA)
+lines(gr.growthfit.04 ~ seq(0, 6, 0.1)
+      , lwd = 2
+      , lty = 5
+)
+# touch = 0.8
+polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))), # touch = 0
+        y = c(gr.growthCI.lower.08, rev(gr.growthCI.upper.08)),
+        col = alpha('gray', 0.5),
+        border = NA)
+lines(gr.growthfit.08 ~ seq(0, 6, 0.1)
+      , lwd = 2
+      , lty = 1
+)
+
+legend(x = 4
+       , y = 0.01
+       , legend = c(0, 0.4, 0.8)
+       , lty = c(3, 5, 1)
+       , lwd = c(2, 2, 2)
+       , y.intersp = 0.75
+       , box.lty= 0
+       , bg = 'transparent'
+       , title = 'Crowding'
+)
 
 dev.off()
 
