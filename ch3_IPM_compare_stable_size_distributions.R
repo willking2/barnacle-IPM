@@ -119,7 +119,7 @@ lines(yz
 # line labels
 text(x = 5
      , y = 0.25
-     , 'aLrH'
+     , 'eLrH'
 )
 
 lines(x = c(2.6, 4.3)
@@ -129,7 +129,7 @@ lines(x = c(2.6, 4.3)
   
 text(x = 5
      , y = 0.15
-     , 'aHrL'
+     , 'eHrL'
 )
 lines(x = c(4, 4.35)
       , y = c(0.1, 0.13)
