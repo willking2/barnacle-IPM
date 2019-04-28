@@ -62,29 +62,41 @@ par(cex = 1.2
     , mar = c(4, 4, 0.5, 0.5)
 )
 
-# aUrU
-plot(yz
-     , stablesizes_aHrL
-     # , xlab = "Body size (Operculum length, mm)"
-     # , ylab = "Probability density"
-     , type = 'n'
-     # , col = 'gray'
+hist(c(rec$z, dat$z1)
+     , freq = F
      , ylim = c(0, 1)
+     , xlim = c(0, 10)
      , xlab = ''
      , ylab = ''
      , axes = F
+     , main = ''
+     , col = 'gray80'
+     , border = 'white'
 )
+
+# # aUrU
+# plot(yz
+#      , stablesizes_aHrL
+#      # , xlab = "Body size (Operculum length, mm)"
+#      # , ylab = "Probability density"
+#      , type = 'n'
+#      # , col = 'gray'
+#      , ylim = c(0, 1)
+#      , xlab = ''
+#      , ylab = ''
+#      , axes = F
+# )
 
 # line showing portion compared w/ KS test
 lines(x = c(2, 2)
       , y = c(0, 0.3)
-      , col = 'gray'
-      #, lty = 2
+      #, col = 'gray'
+      , lty = 2
 )
 lines(x = c(2, 10)
       , y = c(0.3, 0.3)
-      , col = 'gray'
-      #, lty = 2
+      #, col = 'gray'
+      , lty = 2
 )
 
 # aLrH
