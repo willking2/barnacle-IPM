@@ -21,18 +21,26 @@ rm(moop, meep)
 lambdas.model$cont <- seq(1:length(lambdas.model$lambda))
 
 # calculate field mean and se with all data included
-lambda.field.all_mean <- mean(lambdas$lambda[lambdas$type == 'field'])
+lambda.field.all_mean <- mean(lambdas$lambda[lambdas$type == 'field']) # 1.53
+lambda.field.all_sd <- sd(lambdas$lambda[lambdas$type == 'field']) # 0.98
 lambda.field.all_se <- sd(lambdas$lambda[lambdas$type == 'field'])/sqrt(12)
 lambda.field.all_serange <- c(lambda.field.all_mean - lambda.field.all_se # lower
                               , lambda.field.all_mean + lambda.field.all_se # upper
 )
 
-# calculate field mean and se with lambdas 2.00 or greater excluded (4 points excluded)
-lambda.field.subset_mean <- mean(lambdas$lambda[lambdas$type == 'field' & lambdas$lambda < 2])
-lambda.field.subset_se <- sd(lambdas$lambda[lambdas$type == 'field'& lambdas$lambda < 2])/sqrt(9)
-lambda.field.subset_serange <- c(lambda.field.subset_mean - lambda.field.subset_se # lower
-                              , lambda.field.subset_mean + lambda.field.subset_se # upper
-)
+# # calculate field mean and se with lambdas outside 1 sd of mean excluded
+# # mean is 2.02, SD is 1.41, so range to be included is 0.6 to 3.43
+# # to exclude: 3.73 (FH1 H), 0.57 (FH2 M), and 5.28 (RT3 L)
+# 
+# lambdas.subset <- lambdas[lambdas$lambda != 3.73 &
+#                                   lambdas$lambda != 0.57 &
+#                                   lambdas$lambda != 5.28
+#                                 , ]
+# lambda.field.subset_mean <- mean(lambdas.subset$lambda)
+# lambda.field.subset_se <- sd(lambdas.subset$lambda)/sqrt(9)
+# lambda.field.subset_serange <- c(lambda.field.subset_mean - lambda.field.subset_se # lower
+#                               , lambda.field.subset_mean + lambda.field.subset_se # upper
+# )
 
 
 # ---- plot: vertical style ----
@@ -40,14 +48,14 @@ lambda.field.subset_serange <- c(lambda.field.subset_mean - lambda.field.subset_
 pdf('plots/compare_lambdas.pdf', width = 5, height = 7)
 par(xpd = NA
     , cex = 1.2
-    , mar = c(5, 5, 1.5, 0.5)
+    , mar = c(4, 5, 1, 0.5)
 )
 
 ## blank plot
 plot(cont ~ lambda
      , data = lambdas.model
-     , ylim = c(max(cont), min(cont)-2)
-     , xlim = c(0.5, 2.5)
+     , ylim = c(max(cont)+1, min(cont)-2)
+     , xlim = c(0.5, 2.0)
      , type = 'n'
      , axes = F
      , xlab = ''
@@ -56,7 +64,7 @@ plot(cont ~ lambda
 
 ## add line of zero population growth
 lines(x = c(1, 1)
-      , y = c(min(lambdas.model$cont)-3, max(lambdas.model$cont)+1)
+      , y = c(min(lambdas.model$cont)-2, max(lambdas.model$cont)+1)
       , col = 'gray'
       #, lty = 2
 )
@@ -76,24 +84,24 @@ lines(x = c(1, 1)
 # )
 
 # mean and se of all field lambdas
-lines(y = c(min(lambdas.model$cont) - 2, min(lambdas.model$cont) - 2)
+lines(y = c(min(lambdas.model$cont) - 1, min(lambdas.model$cont) - 1)
       , x = c(lambda.field.all_serange[1], lambda.field.all_serange[2])
 )
-points(y = min(lambdas.model$cont) - 2
+points(y = min(lambdas.model$cont) - 1
        , x = lambda.field.all_mean
        , pch = 21
        , bg = 'white'
 )
 
-# mean and se of field lambdas < 2
-lines(y = c(min(lambdas.model$cont) - 1, min(lambdas.model$cont) - 1)
-      , x = c(lambda.field.subset_serange[1], lambda.field.subset_serange[2])
-)
-points(y = min(lambdas.model$cont) - 1
-       , x = lambda.field.subset_mean
-       , pch = 21
-       , bg = 'white'
-)
+# # mean and se of field lambdas < 2
+# lines(y = c(min(lambdas.model$cont) - 1, min(lambdas.model$cont) - 1)
+#       , x = c(lambda.field.subset_serange[1], lambda.field.subset_serange[2])
+# )
+# points(y = min(lambdas.model$cont) - 1
+#        , x = lambda.field.subset_mean
+#        , pch = 21
+#        , bg = 'white'
+# )
 
 ## 95% CIs of model lambdas
 for (i in min(lambdas.model$cont):max(lambdas.model$cont)){
@@ -106,8 +114,8 @@ for (i in min(lambdas.model$cont):max(lambdas.model$cont)){
 ## model lambdas in black
 points(cont ~ lambda
        , data = lambdas.model
-       , xlim = c(0.5, 2.5)
-       , ylim = c(min(cont)-2, max(cont))
+       , xlim = c(0.5, 2.0)
+       , ylim = c(min(cont)-1, max(cont))
        , col = 'black'
        , pch = 19
 )
@@ -121,26 +129,26 @@ axis(1
      , tck = 0.02
 )
 axis(2 
-     , at = seq(from = min(lambdas.model$cont) - 3
+     , at = seq(from = min(lambdas.model$cont) - 2
                 , to = max(lambdas.model$cont) + 1
                 , by = 1)
      , pos = 0.5
      , tck = 0.02
-     , labels = c('', 'field all', 'field subset', as.character(lambdas.model$scenario), '')
+     , labels = c('', 'field', as.character(lambdas.model$scenario), '')
      , las = 2
 )
 axis(3
      , las = 1
-     , pos = min(lambdas.model$cont) - 3
+     , pos = min(lambdas.model$cont) - 2
      , tck = 0.02
      , labels = F
 )
 
 axis(4
-     , at = seq(from = min(lambdas.model$cont) - 3
+     , at = seq(from = min(lambdas.model$cont) - 2
                 , to = max(lambdas.model$cont) + 1
                 , by = 1)
-     , pos = 2.5
+     , pos = 2
      , tck = 0.02
      , labels = F
 )
@@ -148,7 +156,7 @@ axis(4
 
 mtext( expression('Population growth rate ('*lambda*')')
       , side = 1
-      , line = 3.5
+      , line = 2
       , cex = 1.2
 )
 
@@ -158,12 +166,12 @@ mtext('IPMs'
       , cex = 1.2
 )
 
-lines(y = c(min(lambdas.model$cont), 4.3)
-      , x = c(-0.15, -0.15)
+lines(y = c(min(lambdas.model$cont), 4.7)
+      , x = c(0.005, 0.005)
 )
 
-lines(y = c(5.7, max(lambdas.model$cont))
-      , x = c(-0.15, -0.15)
+lines(y = c(6.3, max(lambdas.model$cont))
+      , x = c(0.005, 0.005)
 )
 
 dev.off()

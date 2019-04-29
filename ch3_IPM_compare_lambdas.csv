@@ -1,16 +1,12 @@
 type,scenario,lambda,confint95_lower,confint95_upper,notes
 field,field_CC2_H,1.57,,,initial: 20170527. final: 20180501 
 field,field_FH1_H,3.73,,,initial: 20170526. final: 20180501 
-field,field_FH1_L,3.16,,,initial: 20170526. final: 20180501 
-field,field_FH1_M,1.44,,,initial: 20170526. final: 20180501 
+field,field_FH1_L,1.76,,,initial: 20170526. final: 20180501 
+field,field_FH1_M,1.27,,,initial: 20170526. final: 20180501 
 field,field_FH2_H,1.53,,,initial: 20170526. final: 20180501 
-field,field_FH2_M,0.57,,,initial: 20170526. final: 20180501 
+field,field_FH2_M,0.61,,,initial: 20170526. final: 20180501 
 field,field_RT2_H,0.89,,,initial: 20170609. final: 20180502 
-field,field_RT2_L,1.4,,,initial: 20170609. final: 20180502 
-field,field_RT2_M,1.14,,,initial: 20170609. final: 20180502 
 field,field_RT3_H,0.86,,,"initial: 20170609. final: 20180710; final photo is later date than in survival/growth dataset, because need to identify b. glandula vs. c. dalli"
-field,field_RT3_L,5.28,,,"initial: 20170609. final: 20180710; final photo is later date than in survival/growth dataset, because need to identify b. glandula vs. c. dalli"
-field,field_RT3_M,2.64,,,"initial: 20170609. final: 20180710; final photo is later date than in survival/growth dataset, because need to identify b. glandula vs. c. dalli"
 IPM,size-only,1.26,1.03,1.51,
 IPM,eFrF,1.24,1.01,1.5,
 IPM,eUrU,1.17,0.96,1.39,
