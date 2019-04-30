@@ -306,6 +306,23 @@ plot(Surv ~ touch_pct
      , data = dat
 )
 
+# ---- field observed extremes in crowding distributions (supplement) ----
+# low crowding dist observed in field: FH2, 5/26/2017
+hist(photos$touch_raw[photos$subsite == 'FH2' & photos$density_trt == 'H']/360
+     , freq = F
+     , xlim = c(0, 1)
+     , main = 'FH2'
+     , xlab = 'crowding'
+)
+
+#high crowding dist observed in field: CP1, 6/12/2017
+hist(photos$touch_raw[photos$subsite == 'CP1' & photos$density_trt == 'H']/360
+     , freq = F
+     , xlim = c(0, 1)
+     , main = 'CP1'
+     , xlab = 'crowding'
+)
+
 # ---- determine field adult and recruit touch distribution for iteration ----
 
 h_t <- hist(dat$touch_pct
