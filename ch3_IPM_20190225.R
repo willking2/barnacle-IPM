@@ -597,7 +597,7 @@ AIC(growth.1
     , growth.5
     , growth.6
     , growth.7
-) # prefer growth.1
+) # prefer growth.2
 BIC(growth.1
     , growth.2
     , growth.3
@@ -605,13 +605,16 @@ BIC(growth.1
     , growth.5
     , growth.6
     , growth.7
-) # prefer growth.1
+) # prefer growth.2
 
 
 ### determine fixed structure
-summary(growth.1) # R^2
-Anova(growth.1)
-anova(growth.1)
+summary(growth.2) # R^2
+Anova(growth.2)
+anova(growth.2)
+
+### rsquared using MuMIn::r.squaredGLMM
+MuMIn::r.squaredGLMM(growth.2)
 
 ### model validation
 
