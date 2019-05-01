@@ -1045,7 +1045,7 @@ BIC(survival.1
 
 
 ### determine fixed structure
-summary(survival.1)
+summary(survival.1) # everything NS
 Anova(survival.1) # only initial size is significant
 
 ### compare body size effect to null
@@ -1053,6 +1053,8 @@ survival.null <- glm(Surv ~ 1
                      , family = binomial
                      , data = dat
 )
+
+summary(survival.null)
 
 AIC(survival.1, survival.null) # AIC prefers survival.1 (which includes body size effect)
 BIC(survival.1, survival.null) # BIC prefer survival.null (lol)
