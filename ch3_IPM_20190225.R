@@ -182,23 +182,46 @@ dat$z1 <- photos3$operc_length_final_mm
 ## response surface
 plot(touch_pct ~ z
      , data = dat
+     , las = 1
+     , xlab = 'Body size (mm), year t'
+     , ylab = 'Crowding'
+     , xlim = c(0, 7)
+     , type = 'n'
 )
+
+rect(xleft = -0.27
+     , ybottom = 0.8
+     , xright = 7.28
+     , ytop = 1.25
+     , col = alpha('black', 0.25)
+     , border = NA
+)
+rect(xleft = 5.5
+     , ybottom = -0.25
+     , xright = 7.28
+     , ytop = 0.8
+     , col = alpha('black', 0.25)
+     , border = NA
+)
+
+
+# abline(h = 0.8, lty = 2)
+# abline(v = 5.5, lty = 2)
+
 ## color points by survived or no
 # lived
 points(touch_pct ~ z
        , data = dat[dat$Surv == 1, ]
-       , col = 'blue'
+       , col = alpha('aquamarine4', 0.55)
        , pch = 19
 )
 # died
 points(touch_pct ~ z
        , data = dat[dat$Surv == 0, ]
-       , col = 'red'
-       , pch = 19
+       , col = alpha('salmon', 0.55)
+       , pch = 17
 )
 
-abline(h = 0.8)
-abline(v = 5.5)
 
 
 # limit data to initial operc size =< 5.5 and touch =< 0.8 
