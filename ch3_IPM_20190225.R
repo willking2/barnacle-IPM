@@ -1048,16 +1048,6 @@ BIC(survival.1
 summary(survival.1) # everything NS
 Anova(survival.1) # only initial size is significant
 
-### compare body size effect to null
-survival.null <- glm(Surv ~ 1
-                     , family = binomial
-                     , data = dat
-)
-
-summary(survival.null)
-
-AIC(survival.1, survival.null) # AIC prefers survival.1 (which includes body size effect)
-BIC(survival.1, survival.null) # BIC prefer survival.null (lol)
 
 ### rsquared using MuMIn::r.squaredGLMM
 MuMIn::r.squaredGLMM(survival.1)
@@ -1091,6 +1081,16 @@ mod.Surv <- glm(Surv ~ z
                 , family = binomial
                 , data = dat
 )
+
+
+### compare body size effect to null
+survival.null <- glm(Surv ~ 1
+                     , family = binomial
+                     , data = dat
+)
+
+AIC(mod.Surv, survival.null) # AIC prefers mod.Surv (which includes body size effect)
+BIC(mod.Surv, survival.null) # BIC prefers mod.Surv.go w/ mod.Surv
 
 # ---- plot: survival ----
 
