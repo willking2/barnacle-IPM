@@ -2766,7 +2766,7 @@ mod.Surv <- glm(Surv ~ z
 
 
 
-### growth
+### growth 
 
 ## model w/ body size * touch
 dat.growth <- dat[is.na(dat$z1) == F, ]
