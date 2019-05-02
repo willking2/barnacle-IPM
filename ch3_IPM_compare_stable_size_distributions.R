@@ -89,12 +89,12 @@ hist(c(rec$z, dat$z1)
 
 # line showing portion compared w/ KS test
 lines(x = c(2, 2)
-      , y = c(0, 0.3)
+      , y = c(0, 0.32)
       #, col = 'gray'
       , lty = 2
 )
 lines(x = c(2, 10)
-      , y = c(0.3, 0.3)
+      , y = c(0.32, 0.32)
       #, col = 'gray'
       , lty = 2
 )
@@ -176,7 +176,7 @@ mtext('Probability density'
 
 text(x = 7.5
      , y = 0.2
-     , 'P = 0.023'
+     , 'P = 0.036'
 )
 
 lines(x = c(6, 6)
