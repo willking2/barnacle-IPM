@@ -69,6 +69,9 @@ rec$z <- round(rec$z, 1)
 h <- hist(rec$z
           , freq = F
           , breaks = seq( min(rec$z), max(rec$z), 0.1)
+          , xlab = 'Size (mm)'
+          , las = 1
+          , main = 'Field (RT3), recruits'
 )
 
 # rec_sizedist <- h$density * 0.1 # size distribution of recruits (probability)
@@ -105,6 +108,8 @@ recruit.Gaussian <- dnorm(recruit.x
 )
 lines(recruit.x
       , recruit.Gaussian
+      , col = 'orange'
+      , lwd = 2
 )
 
 ## fit gamma distribution
@@ -334,22 +339,27 @@ plot(Surv ~ touch_pct
 hist(photos$touch_raw[photos$subsite == 'FH2' & photos$density_trt == 'H']/360
      , freq = F
      , xlim = c(0, 1)
-     , main = 'FH2'
-     , xlab = 'crowding'
+     , main = 'Field (FH2)'
+     , xlab = 'Crowding'
+     , las = 1
 )
 
 #high crowding dist observed in field: CP1, 6/12/2017
 hist(photos$touch_raw[photos$subsite == 'CP1' & photos$density_trt == 'H']/360
      , freq = F
      , xlim = c(0, 1)
-     , main = 'CP1'
-     , xlab = 'crowding'
+     , main = 'Field (CP1)'
+     , xlab = 'Crowding'
+     , las = 1
 )
 
 # ---- determine field adult and recruit touch distribution for iteration ----
 
 h_t <- hist(dat$touch_pct
             , freq = F
+            , las = 1
+            , xlab = 'Crowding'
+            , main = 'Field, established individuals'
 )
 
 
@@ -371,7 +381,8 @@ touchy.beta <- dbeta(touchy.x
 )
 lines(touchy.x
       , touchy.beta
-      , col = 'green'
+      , col = 'orange'
+      , lwd = 2
 )
 
 ## fit Gaussian distribution
@@ -438,6 +449,9 @@ dev.off()
 
 h_t.r <- hist(dat$touch_pct[dat$subsite == 'RT3']
               , freq = F
+              , las = 1
+              , xlab = 'Crowding'
+              , main = 'Field (RT3), recruits'
 )
 
 ### fit candidate distributions
@@ -458,7 +472,8 @@ touchy.beta.r <- dbeta(touchy.x.r
 )
 lines(touchy.x.r
       , touchy.beta.r
-      , col = 'green'
+      , col = 'orange'
+      , lwd = 2
 )
 
 # ---- set theoretical touch distributions for IPMsizetouch treatments ----
@@ -486,10 +501,13 @@ plot(crowdy.x
               , shape1 = 2
               , shape2 = 50
       )
-      , col = 'blue'
+      , col = 'skyblue3'
      , type = 'l'
-     , ylab = 'density'
-     , xlab = 'crowding'
+     , ylab = 'Probability density'
+     , xlab = 'Crowding'
+     , las = 1
+     , lwd = 2
+     , lty = 2
 )
 
 # mostly high crowd
@@ -498,7 +516,9 @@ lines(crowdy.x
               , shape1 = 50
               , shape2 = 2
       )
-      , col = 'red'
+      , col = 'salmon'
+      , lwd = 2
+      , lty = 3
 )
 
 # # mostly medium crowd
@@ -516,7 +536,24 @@ lines(crowdy.x
               , shape1 = 1
               , shape2 = 1
       )
-      , col = 'orange'
+      , col = 'springgreen3'
+      , lwd = 2
+      , lty = 1
+)
+
+text(x = 0.5
+     , y = 2
+     , 'Uniform (U)'
+)
+
+text(x = 0.85
+     , y = 15
+     , 'High (H)'
+)
+
+text(x = 0.15
+     , y = 15
+     , 'Low (L)'
 )
 
 # # field observed adult touch distribution
@@ -525,7 +562,8 @@ lines(crowdy.x
 #               , shape1 = betafit_t$estimate[1] # 1
 #               , shape2 = betafit_t$estimate[2] # 3.61
 #       )
-#       , col = 'green'
+#       , col = 'orange'
+#       , lwd = 2
 # )
 
 ### quantifying amount of area under the curve for crowding scenarios
