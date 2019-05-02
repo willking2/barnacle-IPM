@@ -130,27 +130,48 @@ newgrowth.00 <- expand.grid(
   , touch_pct = 0
   , z1 = 0
 )
-# add predictions
-growthpreds.00 <- predict(growth.1, newgrowth.00, se.fit = T)
-# CIs
-growthCI.upper.00 <- growthpreds.00$fit + critval*growthpreds.00$se.fit
-growthCI.lower.00 <- growthpreds.00$fit - critval*growthpreds.00$se.fit
-growthfit.00 <- growthpreds.00$fit
+
+newgrowth.00$z1 <- predict(growth.2, newgrowth.00, re.form = NA)
+mm <- model.matrix(terms(growth.2), newgrowth.00)
+
+pvar1 <- diag(mm %*% tcrossprod(vcov(growth.2),mm))
+tvar1 <- pvar1+VarCorr(growth.2)$subsite[1]  ## must be adapted for more complex models
+cmult <- 1.96
+newgrowth.00 <- data.frame(
+  newgrowth.00
+  , plo = newgrowth.00$z1-cmult*sqrt(pvar1) # fixed only
+  , phi = newgrowth.00$z1+cmult*sqrt(pvar1) # fixed only
+  , tlo = newgrowth.00$z1-cmult*sqrt(tvar1) # fixed and random
+  , thi = newgrowth.00$z1+cmult*sqrt(tvar1) # fixed and random
+)
+
 
 
 ## touch = 0.4
 # make blank area for new data
-newgrowth.04 <- expand.grid(
+newgrowth.05 <- expand.grid(
   z = seq(0, 6, 0.1)
   , touch_pct = 0.4
   , z1 = 0
 )
-# add predictions
-growthpreds.04 <- predict(growth.1, newgrowth.04, se.fit = T)
-# CIs
-growthCI.upper.04 <- growthpreds.04$fit + critval*growthpreds.04$se.fit
-growthCI.lower.04 <- growthpreds.04$fit - critval*growthpreds.04$se.fit
-growthfit.04 <- growthpreds.04$fit
+
+
+newgrowth.04$z1 <- predict(growth.2, newgrowth.04, re.form = NA)
+mm <- model.matrix(terms(growth.2), newgrowth.04)
+
+pvar1 <- diag(mm %*% tcrossprod(vcov(growth.2),mm))
+tvar1 <- pvar1+VarCorr(growth.2)$subsite[1]  ## must be adapted for more complex models
+cmult <- 1.96
+newgrowth.04 <- data.frame(
+  newgrowth.04
+  , plo = newgrowth.04$z1-cmult*sqrt(pvar1) # fixed only
+  , phi = newgrowth.04$z1+cmult*sqrt(pvar1) # fixed only
+  , tlo = newgrowth.04$z1-cmult*sqrt(tvar1) # fixed and random
+  , thi = newgrowth.04$z1+cmult*sqrt(tvar1) # fixed and random
+)
+
+
+
 
 ## touch = 0.8
 # make blank area for new data
@@ -159,14 +180,26 @@ newgrowth.08 <- expand.grid(
   , touch_pct = 0.8
   , z1 = 0
 )
-# add predictions
-growthpreds.08 <- predict(growth.1, newgrowth.08, se.fit = T)
-# CIs
-growthCI.upper.08 <- growthpreds.08$fit + critval*growthpreds.08$se.fit
-growthCI.lower.08 <- growthpreds.08$fit - critval*growthpreds.08$se.fit
-growthfit.08 <- growthpreds.08$fit
+
+
+
+newgrowth.08$z1 <- predict(growth.2, newgrowth.08, re.form = NA)
+mm <- model.matrix(terms(growth.2), newgrowth.08)
+
+pvar1 <- diag(mm %*% tcrossprod(vcov(growth.2),mm))
+tvar1 <- pvar1+VarCorr(growth.2)$subsite[1]  ## must be adapted for more complex models
+cmult <- 1.96
+newgrowth.08 <- data.frame(
+  newgrowth.08
+  , plo = newgrowth.08$z1-cmult*sqrt(pvar1) # fixed only
+  , phi = newgrowth.08$z1+cmult*sqrt(pvar1) # fixed only
+  , tlo = newgrowth.08$z1-cmult*sqrt(tvar1) # fixed and random
+  , thi = newgrowth.08$z1+cmult*sqrt(tvar1) # fixed and random
+)
+
 
 ### actually plot
+
 
 
 ## base plot
@@ -183,6 +216,28 @@ plot(z1 ~ z
 # add line of zero growth (1:1)
 lines(seq(0, 6, 1), seq(0, 6, 1), col = 'gray')
 
+
+
+
+## prediction lines and CIs
+
+## fixed effects CIs
+# touch = 0
+polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))), 
+        y = c(newgrowth.00$plo, rev(newgrowth.00$phi)),
+        col = alpha('gray', 0.5),
+        border = NA)
+# touch = 0.4
+polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))),
+        y = c(newgrowth.04$plo, rev(newgrowth.04$phi)),
+        col = alpha('gray', 0.5),
+        border = NA)
+# touch = 0.8
+polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))),
+        y = c(newgrowth.08$plo, rev(newgrowth.08$phi)),
+        col = alpha('gray', 0.5),
+        border = NA)
+
 ## color points by touch
 points(z1 ~ z
        , data = dat
@@ -190,34 +245,26 @@ points(z1 ~ z
        , col = dat$colors
 )
 
-## prediction lines and CIs
-# touch = 0
-polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))), # touch = 0
-        y = c(growthCI.lower.00, rev(growthCI.upper.00)),
-        col = alpha('gray', 0.5),
-        border = NA)
-lines(growthfit.00 ~ seq(0, 6, 0.1)
+
+
+## prediction lines
+# touch = 0.0
+lines(newgrowth.00$z1 ~ seq(0, 6, 0.1)
       , lwd = 2
       , lty = 3
 )
 # touch = 0.4
-polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))), # touch = 0
-        y = c(growthCI.lower.04, rev(growthCI.upper.04)),
-        col = alpha('gray', 0.5),
-        border = NA)
-lines(growthfit.04 ~ seq(0, 6, 0.1)
+lines(newgrowth.04$z1 ~ seq(0, 6, 0.1)
       , lwd = 2
       , lty = 5
 )
 # touch = 0.8
-polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))), # touch = 0
-        y = c(growthCI.lower.08, rev(growthCI.upper.08)),
-        col = alpha('gray', 0.5),
-        border = NA)
-lines(growthfit.08 ~ seq(0, 6, 0.1)
+lines(newgrowth.08$z1 ~ seq(0, 6, 0.1)
       , lwd = 2
       , lty = 1
 )
+
+
 
 
 
@@ -265,7 +312,7 @@ mtext('Body size (mm), year t'
 )
 mtext('Body size (mm), year t+1'
       , side = 2
-      , line = 1.5
+      , line = 2.5
       , cex = 1.2
 )
 
