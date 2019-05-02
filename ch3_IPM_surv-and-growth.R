@@ -149,7 +149,7 @@ newgrowth.00 <- data.frame(
 
 ## touch = 0.4
 # make blank area for new data
-newgrowth.05 <- expand.grid(
+newgrowth.04 <- expand.grid(
   z = seq(0, 6, 0.1)
   , touch_pct = 0.4
   , z1 = 0
@@ -227,11 +227,11 @@ polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))),
         y = c(newgrowth.00$plo, rev(newgrowth.00$phi)),
         col = alpha('gray', 0.5),
         border = NA)
-# touch = 0.4
-polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))),
-        y = c(newgrowth.04$plo, rev(newgrowth.04$phi)),
-        col = alpha('gray', 0.5),
-        border = NA)
+# # touch = 0.4
+# polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))),
+#         y = c(newgrowth.04$plo, rev(newgrowth.04$phi)),
+#         col = alpha('gray', 0.5),
+#         border = NA)
 # touch = 0.8
 polygon(x = c(seq(0, 6, 0.1), rev(seq(0, 6, 0.1))),
         y = c(newgrowth.08$plo, rev(newgrowth.08$phi)),
@@ -253,11 +253,11 @@ lines(newgrowth.00$z1 ~ seq(0, 6, 0.1)
       , lwd = 2
       , lty = 3
 )
-# touch = 0.4
-lines(newgrowth.04$z1 ~ seq(0, 6, 0.1)
-      , lwd = 2
-      , lty = 5
-)
+# # touch = 0.4
+# lines(newgrowth.04$z1 ~ seq(0, 6, 0.1)
+#       , lwd = 2
+#       , lty = 5
+# )
 # touch = 0.8
 lines(newgrowth.08$z1 ~ seq(0, 6, 0.1)
       , lwd = 2
@@ -265,19 +265,28 @@ lines(newgrowth.08$z1 ~ seq(0, 6, 0.1)
 )
 
 
-
-
+# legend(x = 0
+#        , y = 8
+#        , legend = c(0, 0.4, 0.8)
+#        , lty = c(3, 5, 1)
+#        , lwd = c(2, 2, 2)
+#        , y.intersp = 0.75
+#        , box.lty= 0
+#        , bg = 'transparent'
+#        , title = 'Crowding'
+# )
 
 legend(x = 0
        , y = 8
-       , legend = c(0, 0.4, 0.8)
-       , lty = c(3, 5, 1)
-       , lwd = c(2, 2, 2)
+       , legend = c(0, 0.8)
+       , lty = c(3, 1)
+       , lwd = c(2, 2)
        , y.intersp = 0.75
        , box.lty= 0
        , bg = 'transparent'
        , title = 'Crowding'
 )
+
 
 # axes and labels
 axis(1 
