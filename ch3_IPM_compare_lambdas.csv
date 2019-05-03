@@ -8,13 +8,13 @@ field,field_FH2_M,0.61,,,initial: 20170526. final: 20180501
 field,field_RT2_H,0.89,,,initial: 20170609. final: 20180502 
 field,field_RT3_H,0.86,,,"initial: 20170609. final: 20180710; final photo is later date than in survival/growth dataset, because need to identify b. glandula vs. c. dalli"
 IPM,size-only,1.14,0.918,1.372,
-IPM,eFrF,1.13,,,
+IPM,eFrF,1.13,0.91,1.353,
 IPM,eUrU,1.07,,,
-IPM,eLrH,0.94,,,
+IPM,eLrH,0.94,0.7466,1.1481,
 IPM,eUrH,0.95,,,
 IPM,eHrH,0.96,,,
 IPM,eLrU,1.04,,,
 IPM,eHrU,1.13,,,
 IPM,eLrL,1.18,,,
 IPM,eUrL,1.25,,,
-IPM,eHrL,1.34,,,
+IPM,eHrL,1.34,1.09,1.605,
