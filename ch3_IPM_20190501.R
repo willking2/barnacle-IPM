@@ -6453,8 +6453,10 @@ image(yz
       , yt
       , repro.val_aLrH
       , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
+      , xlab = "Body size (mm)"
       , ylab = "Crowding"
+      , las = 1
+      , main = 'eLrH'
 )
 contour(yz
         , yt
@@ -6889,8 +6891,10 @@ image(yz
       , yt
       , repro.val_aHrL
       , col = grey(seq(0.5, 1, length=100))
-      , xlab = "Operculum length, mm"
+      , xlab = "Body size (mm)"
       , ylab = "Crowding"
+      , las = 1
+      , main = 'eHrL'
 )
 contour(yz
         , yt
