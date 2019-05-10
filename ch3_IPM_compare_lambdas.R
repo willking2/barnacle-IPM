@@ -7,6 +7,8 @@ library(scales)
 lambdas <- read.csv('ch3_IPM_compare_lambdas.csv', header = T)
 lambdas.model <- lambdas[lambdas$type == 'IPM', ]
 
+booty <- read.csv('Ch3_IPM_bootstrap_outputs.csv', header = T)
+
 # ---- adjust data and calculate terms ----
 
 ## order lambdas.model
@@ -42,6 +44,17 @@ lambda.field.all_serange <- c(lambda.field.all_mean - lambda.field.all_se # lowe
 #                               , lambda.field.subset_mean + lambda.field.subset_se # upper
 # )
 
+
+# ---- t-test ----
+
+hist(booty$eLrH)
+hist(booty$eHrL)
+
+t.test(x = booty$eLrH
+       , y = booty$eHrL
+       , var.equal = F
+       , alternative = 'two.sided'
+) # t = -76.167, df = 1829.9, p-value < 2.2e-16
 
 # ---- plot: vertical style ----
 
@@ -166,12 +179,35 @@ mtext('IPMs'
       , cex = 1.2
 )
 
+# lines for IPMs label
 lines(y = c(min(lambdas.model$cont), 4.7)
       , x = c(0.005, 0.005)
 )
 
 lines(y = c(6.3, max(lambdas.model$cont))
       , x = c(0.005, 0.005)
+)
+
+# lines and asterisk for significance
+
+text(x = 1.75
+     , y = 7.75
+     , '***'
+)
+
+lines(y = c(4, 7.5)
+      , x = c(1.75, 1.75)
+)
+lines(y = c(4, 4)
+      , x = c(1.7, 1.75)
+)
+
+
+lines(y = c(8, 11)
+      , x = c(1.75, 1.75)
+)
+lines(y = c(11, 11)
+      , x = c(1.7, 1.75)
 )
 
 dev.off()
