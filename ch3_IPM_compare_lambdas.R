@@ -54,7 +54,7 @@ t.test(x = booty$eLrH
        , y = booty$eHrL
        , var.equal = F
        , alternative = 'two.sided'
-) # t = -76.167, df = 1829.9, p-value < 2.2e-16
+) #  t = -76.167, df = 1829.9, p-value < 2.2e-16
 
 # ---- plot: vertical style ----
 
